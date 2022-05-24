@@ -28,7 +28,7 @@
 #ifndef __CDCACM_H
 #define __CDCACM_H
 
-#include <libopencm3/usb/usbd.h>
+// #include <libopencm3/usb/usbd.h>
 
 #define CDCACM_PACKET_SIZE 	64
 
@@ -36,7 +36,8 @@
 #define CDCACM_UART_ENDPOINT	3
 #define TRACE_ENDPOINT			5
 
-extern usbd_device *usbdev;
+// extern usbd_device *usbdev;
+extern void *usbdev;
 
 void cdcacm_init(void);
 /* Returns current usb configuration, or 0 if not configured. */

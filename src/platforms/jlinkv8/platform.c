@@ -18,21 +18,60 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __GDB_IF_H
-#define __GDB_IF_H
+/* This file implements the platform specific functions for the ST-Link
+ * implementation.
+ */
 
-#if PC_HOSTED == 0
-// #include <libopencm3/usb/usbd.h>
-// void gdb_usb_out_cb(usbd_device *dev, uint8_t ep);
-void gdb_usb_out_cb(void *dev, uint8_t ep);
+#include "general.h"
+#include "cdcacm.h"
+// #include "usbuart.h"
+
+uint16_t led_idle_run;
+uint16_t srst_pin;
+static uint32_t rev;
+static void adc_init(void);
+
+int platform_hwversion(void)
+{
+	return rev;
+}
+
+void platform_init(void)
+{
+	rev = 0x5A5A5A5A;
+#ifdef ENABLE_DEBUG
+	void initialise_monitor_handles(void);
+	initialise_monitor_handles();
 #endif
 
-int gdb_if_init(void);
-unsigned char gdb_if_getchar(void);
-unsigned char gdb_if_getchar_to(int timeout);
+	platform_srst_set_val(false);
 
-/* sending gdb_if_putchar(0, true) seems to work as keep alive */
-void gdb_if_putchar(unsigned char c, int flush);
 
-#endif
+	platform_timing_init();
 
+	cdcacm_init();
+	adc_init();
+}
+
+void platform_srst_set_val(bool assert)
+{
+	if (assert) {
+	} else {
+	}
+}
+
+bool platform_srst_get_val()
+{
+	return 0;
+}
+
+static void adc_init(void)
+{
+
+}
+
+const char *platform_target_voltage(void)
+{
+	static char ret[] = "0.00V";
+	return ret;
+}

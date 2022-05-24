@@ -1,7 +1,7 @@
 /*
  * This file is part of the Black Magic Debug project.
  *
- * Copyright (C) 2011  Black Sphere Technologies Ltd.
+ * Copyright (C) 2015  Black Sphere Technologies Ltd.
  * Written by Gareth McMullin <gareth@blacksphere.co.nz>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,22 +17,41 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef __GPIO_H
+#define __GPIO_H
 
-#ifndef __GDB_IF_H
-#define __GDB_IF_H
+#define INLINE_GPIO
 
-#if PC_HOSTED == 0
-// #include <libopencm3/usb/usbd.h>
-// void gdb_usb_out_cb(usbd_device *dev, uint8_t ep);
-void gdb_usb_out_cb(void *dev, uint8_t ep);
+#define gpio_set_val(port, pin, val) do {	\
+	if(val)					\
+		gpio_set((port), (pin));	\
+	else					\
+		gpio_clear((port), (pin));	\
+} while(0)
+
+#ifdef INLINE_GPIO
+static inline void _gpio_set(uint32_t gpioport, uint16_t gpios)
+{
+	(void) gpioport;
+	(void) gpios;
+}
+#define gpio_set _gpio_set
+
+static inline void _gpio_clear(uint32_t gpioport, uint16_t gpios)
+{
+	(void) gpioport;
+	(void) gpios;
+}
+#define gpio_clear _gpio_clear
+
+static inline uint16_t _gpio_get(uint32_t gpioport, uint16_t gpios)
+{
+	(void) gpioport;
+	(void) gpios;
+	return 0;
+}
+#define gpio_get _gpio_get
 #endif
-
-int gdb_if_init(void);
-unsigned char gdb_if_getchar(void);
-unsigned char gdb_if_getchar_to(int timeout);
-
-/* sending gdb_if_putchar(0, true) seems to work as keep alive */
-void gdb_if_putchar(unsigned char c, int flush);
 
 #endif
 
