@@ -28,6 +28,8 @@
 /* TDO/TRACESWO signal comes into the SWOUSART RX pin.
  */
 
+#if defined(SWOASYNC)
+
 #include "general.h"
 #include "cdcacm.h"
 #include "traceswo.h"
@@ -143,3 +145,5 @@ void traceswo_init(uint32_t baudrate, uint32_t swo_chan_bitmask)
 	traceswo_setmask(swo_chan_bitmask);
 	decoding = (swo_chan_bitmask != 0);
 }
+
+#endif
