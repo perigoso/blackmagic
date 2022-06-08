@@ -27,11 +27,13 @@
  * Also supports Cortex-M0 / ARMv6-M
  */
 
+#include "target.h"
+#include "target_internal.h"
+#include "target_probes.h"
+
 #include "general.h"
 #include "exception.h"
 #include "adiv5.h"
-#include "target.h"
-#include "target_internal.h"
 #include "cortexm.h"
 #include "command.h"
 #include "gdb_packet.h"
@@ -378,6 +380,7 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 	} else {
 		target_check_error(t);
 	}
+
 #define PROBE(x) \
 	do { if ((x)(t)) {return true;} else target_check_error(t); } while (0)
 

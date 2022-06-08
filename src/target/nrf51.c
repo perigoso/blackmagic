@@ -411,18 +411,18 @@ const struct command_s nrf51_mdm_cmd_list[] = {
 #define MDM_CONTROL ADIV5_AP_REG(0x04)
 #define MDM_PROT_EN  ADIV5_AP_REG(0x0C)
 
-void nrf51_mdm_probe(ADIv5_AP_t *ap)
+bool nrf51_mdm_probe(ADIv5_AP_t *ap)
 {
 	switch(ap->idr) {
 	case NRF52_MDM_IDR:
 		break;
 	default:
-		return;
+		return false;
 	}
 
 	target *t = target_new();
 	if (!t) {
-		return;
+		return false;
 	}
 
 	adiv5_ap_ref(ap);
@@ -437,6 +437,8 @@ void nrf51_mdm_probe(ADIv5_AP_t *ap)
 		t->driver = "Nordic nRF52 Access Port (protected)";
 	t->regs_size = 4;
 	target_add_commands(t, nrf51_mdm_cmd_list, t->driver);
+
+	return true;
 }
 
 static bool nrf51_mdm_cmd_erase_mass(target *t, int argc, const char **argv)

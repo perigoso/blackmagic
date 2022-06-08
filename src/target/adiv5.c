@@ -28,6 +28,7 @@
 #include "general.h"
 #include "target.h"
 #include "target_internal.h"
+#include "target_probes.h"
 #include "adiv5.h"
 #include "cortexm.h"
 #include "exception.h"
@@ -260,8 +261,6 @@ static const struct {
 	{0xd21, 0x11, 0,      aa_nosupport, cidc_dc,      PIDR_PN_BIT_STRINGS("Cortex-M33", "(Trace Port Interface Unit)")},
 	{0xfff, 0x00, 0,      aa_end,       cidc_unknown, PIDR_PN_BIT_STRINGS("end", "end")}
 };
-
-extern bool cortexa_probe(ADIv5_AP_t *apb, uint32_t debug_base);
 
 void adiv5_ap_ref(ADIv5_AP_t *ap)
 {
@@ -663,7 +662,7 @@ static void rp_rescue_setup(ADIv5_DP_t *dp)
 	}
 	memset(ap, 0, sizeof(ADIv5_AP_t));
 	ap->dp = dp;
-	extern void rp_rescue_probe(ADIv5_AP_t *);
+
 	rp_rescue_probe(ap);
 	return;
 }
@@ -796,13 +795,9 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 			return;
 		}
 		last_base = ap->base;
-		extern void kinetis_mdm_probe(ADIv5_AP_t *);
+
 		kinetis_mdm_probe(ap);
-
-		extern void nrf51_mdm_probe(ADIv5_AP_t *);
 		nrf51_mdm_probe(ap);
-
-		extern void efm32_aap_probe(ADIv5_AP_t *);
 		efm32_aap_probe(ap);
 
 		/* Halt the device and release from reset if reset is active!*/
