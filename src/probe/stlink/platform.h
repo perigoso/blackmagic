@@ -68,6 +68,7 @@ int usbuart_debug_write(const char *buf, size_t len);
 #define PLATFORM_HAS_TRACESWO	1
 #define NUM_TRACE_PACKETS		(128)		/* This is an 8K buffer */
 #define TRACESWO_PROTOCOL		2			/* 1 = Manchester, 2 = NRZ / async */
+#define SWOASYNC
 
 # define SWD_CR   GPIO_CRH(SWDIO_PORT)
 # define SWD_CR_MULT (1 << ((14 - 8) << 2))

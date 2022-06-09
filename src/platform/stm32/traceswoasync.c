@@ -28,8 +28,6 @@
 /* TDO/TRACESWO signal comes into the SWOUSART RX pin.
  */
 
-#if defined(SWOASYNC)
-
 #include "general.h"
 #include "cdcacm.h"
 #include "traceswo.h"
@@ -40,6 +38,8 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/stm32/dma.h>
+
+#ifdef SWOASYNC
 
 /* For speed this is set to the USB transfer size */
 #define FULL_SWO_PACKET	(64)
