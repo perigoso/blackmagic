@@ -386,13 +386,15 @@ kl_gen_command(target *t, uint8_t cmd, uint32_t addr, const uint32_t *data, int 
 	} while (!(fstat & FTFA_FSTAT_CCIF));
 
 	/* Write command to FCCOB */
-	addr &= 0xffffff;
-	addr |= (uint32_t)cmd << 24;
+	addr &= 0x00ffffffU;
+	addr |= cmd << 24U;
 	target_mem_write32(t, FTFA_FCCOB_0, addr);
-	if (data) {
+	if (data && n_items) {
 		target_mem_write32(t, FTFA_FCCOB_1, data[0]);
 		if (n_items > 1)
 			target_mem_write32(t, FTFA_FCCOB_2, data[1]);
+		else
+			target_mem_write32(t, FTFA_FCCOB_2, 0);
 	}
 
 	/* Enable execution by clearing CCIF */
