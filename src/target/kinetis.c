@@ -452,7 +452,7 @@ static int kl_gen_flash_write(struct target_flash *f,
 		write_cmd = FTFA_CMD_PROGRAM_LONGWORD;
 
 	while (len) {
-		if (kl_gen_command(f->t, write_cmd, dest, src, 1)) {
+		if (kl_gen_command(f->t, write_cmd, dest, src, kf->write_len >> 2U)) {
 			if (len > kf->write_len)
 				len -= kf->write_len;
 			else
