@@ -372,13 +372,12 @@ do_common_s32k14x:
 	return true;
 }
 
-static bool
-kl_gen_command(target *t, uint8_t cmd, uint32_t addr, const uint32_t *data, int n_items)
+static bool kl_gen_command(target *t, uint8_t cmd, uint32_t addr, const uint32_t *data, int n_items)
 {
 	uint8_t fstat;
 
 	/* clear errors unconditionally, so we can start a new operation */
-	target_mem_write8(t,FTFA_FSTAT,(FTFA_FSTAT_ACCERR | FTFA_FSTAT_FPVIOL));
+	target_mem_write8(t, FTFA_FSTAT, (FTFA_FSTAT_ACCERR | FTFA_FSTAT_FPVIOL));
 
 	/* Wait for CCIF to be high */
 	do {
@@ -431,17 +430,13 @@ static int kl_gen_flash_erase(struct target_flash *f, target_addr addr, size_t l
 #define FLASH_SECURITY_BYTE_ADDRESS 0x40C
 #define FLASH_SECURITY_BYTE_UNSECURED 0xFE
 
-static int kl_gen_flash_write(struct target_flash *f,
-                              target_addr dest, const void *src, size_t len)
+static int kl_gen_flash_write(struct target_flash *f, target_addr dest, const void *src, size_t len)
 {
 	struct kinetis_flash *kf = (struct kinetis_flash *)f;
 
 	/* Ensure we don't write something horrible over the security byte */
-	if (!f->t->unsafe_enabled &&
-	    dest <= FLASH_SECURITY_BYTE_ADDRESS &&
-	    dest + len > FLASH_SECURITY_BYTE_ADDRESS) {
-		((uint8_t*)src)[FLASH_SECURITY_BYTE_ADDRESS - dest] =
-		    FLASH_SECURITY_BYTE_UNSECURED;
+	if (!f->t->unsafe_enabled && dest <= FLASH_SECURITY_BYTE_ADDRESS && dest + len > FLASH_SECURITY_BYTE_ADDRESS) {
+		((uint8_t *)src)[FLASH_SECURITY_BYTE_ADDRESS - dest] = FLASH_SECURITY_BYTE_UNSECURED;
 	}
 
 	/* Determine write command based on the alignment. */
@@ -479,18 +474,16 @@ static int kl_gen_flash_done(struct target_flash *f)
 	 * vs 4 byte phrases).
 	 */
 	if (kf->write_len == K64_WRITE_LEN) {
-		uint32_t vals[2];
-		vals[0] = target_mem_read32(f->t, FLASH_SECURITY_BYTE_ADDRESS-4);
-		vals[1] = target_mem_read32(f->t, FLASH_SECURITY_BYTE_ADDRESS);
-		vals[1] = (vals[1] & 0xffffff00) | FLASH_SECURITY_BYTE_UNSECURED;
-		kl_gen_command(f->t, FTFE_CMD_PROGRAM_PHRASE,
-					   FLASH_SECURITY_BYTE_ADDRESS - 4, vals, 2);
+		uint32_t vals[2] = {
+			target_mem_read32(f->t, FLASH_SECURITY_BYTE_ADDRESS - 4),
+			target_mem_read32(f->t, FLASH_SECURITY_BYTE_ADDRESS)
+		};
+		vals[1] = (vals[1] & 0xffffff00U) | FLASH_SECURITY_BYTE_UNSECURED;
+		kl_gen_command(f->t, FTFE_CMD_PROGRAM_PHRASE, FLASH_SECURITY_BYTE_ADDRESS - 4, vals, 2);
 	} else {
-		uint32_t vals[1];
-		vals[0] = target_mem_read32(f->t, FLASH_SECURITY_BYTE_ADDRESS);
-		vals[0] = (vals[0] & 0xffffff00) | FLASH_SECURITY_BYTE_UNSECURED;
-		kl_gen_command(f->t, FTFA_CMD_PROGRAM_LONGWORD,
-					   FLASH_SECURITY_BYTE_ADDRESS, vals, 1);
+		uint32_t val = target_mem_read32(f->t, FLASH_SECURITY_BYTE_ADDRESS);
+		val = (val & 0xffffff00U) | FLASH_SECURITY_BYTE_UNSECURED;
+		kl_gen_command(f->t, FTFA_CMD_PROGRAM_LONGWORD, FLASH_SECURITY_BYTE_ADDRESS, &val, 1);
 	}
 
 	return 0;
