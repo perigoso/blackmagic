@@ -95,9 +95,11 @@
 #define K64_WRITE_LEN 8
 
 static bool kinetis_cmd_unsafe(target *t, int argc, char **argv);
+static bool kinetis_back_access_key_cmd(target *t, int argc, const char **argv);
 
 const struct command_s kinetis_cmd_list[] = {
 	{"unsafe", (cmd_handler)kinetis_cmd_unsafe, "Allow programming security byte (enable|disable)"},
+	{"backdoor", (cmd_handler)kinetis_back_access_key_cmd, "Unsecure the device using Backdoor Key Access"},
 	{NULL, NULL, NULL},
 };
 
@@ -508,6 +510,28 @@ static int kinetis_flash_done(struct target_flash *const f)
 	return 0;
 }
 
+static bool kinetis_back_access_key_cmd(target *t, int argc, const char **argv)
+{
+	if (argc != 2)
+		return 1;
+
+	uint8_t fsec = target_mem_read8(t, FTFx_FSEC);
+
+	if ((fsec & FTFx_FSEC_KEYEN_MSK) != FTFx_FSEC_KEYEN)
+		return 1; /* Backdoor key access disabled */
+
+	uint64_t key = strtoull(argv[1], NULL, 0);
+
+	uint32_t key_vals[2] = {(uint32_t)(key >> 32), (uint32_t)key};
+
+	DEBUG_INFO("Backdoor key access, key 0x%08" PRIx32 "%08" PRIx32 " \n", key_val[0], key_val[1]);
+
+	if (kinetis_fccob_cmd(t, FTFx_CMD_BACKDOOR_ACCESS, 0, key_vals, 2))
+		return 0;
+
+	return 1;
+}
+
 /*** Kinetis recovery mode using the MDM-AP ***/
 
 /* Kinetis security bits are stored in regular flash, so it is possible
@@ -522,6 +546,7 @@ static bool kinetis_mdm_cmd_ke04_mode(target *t, int argc, const char **argv);
 const struct command_s kinetis_mdm_cmd_list[] = {
 	{"erase_mass", (cmd_handler)kinetis_mdm_cmd_erase_mass, "Erase entire flash memory"},
 	{"ke04_mode", (cmd_handler)kinetis_mdm_cmd_ke04_mode, "Allow erase for KE04"},
+	{"backdoor", (cmd_handler)kinetis_back_access_key_cmd, "Unsecure the device using Backdoor Key Access"},
 	{NULL, NULL, NULL},
 };
 
