@@ -263,20 +263,13 @@ static void cortexm_priv_free(void *priv)
 	free(priv);
 }
 
-bool cortexm_probe(ADIv5_AP_t *ap)
+bool cortexm_target(target *t, ADIv5_AP_t *ap)
 {
-	target *t;
-
-	t = target_new();
-	if (!t) {
-		return false;
-	}
-
 	adiv5_ap_ref(ap);
 	t->t_designer = ap->ap_designer;
-	t->idcode     = ap->ap_partno;
+	t->idcode = ap->ap_partno;
 	struct cortexm_priv *priv = calloc(1, sizeof(*priv));
-	if (!priv) {			/* calloc failed: heap exhaustion */
+	if (!priv) { /* calloc failed: heap exhaustion */
 		DEBUG_WARN("calloc: failed in %s\n", __func__);
 		return false;
 	}
@@ -313,10 +306,9 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 		break;
 	case CORTEX_M7:
 		t->core = "M7";
-		if (((t->cpuid & CPUID_REVISION_MASK) == 0) &&
-			(t->cpuid & CPUID_PATCH_MASK) < 2) {
+		if (((t->cpuid & CPUID_REVISION_MASK) == 0) && (t->cpuid & CPUID_PATCH_MASK) < 2) {
 			DEBUG_WARN("Silicon bug: Single stepping will enter pending "
-					   "exception handler with this M7 core revision!\n");
+				   "exception handler with this M7 core revision!\n");
 		}
 		break;
 	case CORTEX_M0P:
@@ -326,14 +318,12 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 		t->core = "M0";
 		break;
 	default:
-		if (ap->ap_designer != AP_DESIGNER_ATMEL) /* Protected Atmel device?*/{
+		if (ap->ap_designer != AP_DESIGNER_ATMEL) /* Protected Atmel device?*/ {
 			DEBUG_WARN("Unexpected CortexM CPUID partno %04" PRIx32 "\n", cpuid_partno);
 		}
 	}
-	DEBUG_INFO("CPUID 0x%08" PRIx32 " (%s var %" PRIx32 " rev %" PRIx32 ")\n",
-			   t->cpuid,
-			   t->core, (t->cpuid & CPUID_REVISION_MASK) >> 20,
-			   t->cpuid & CPUID_PATCH_MASK);
+	DEBUG_INFO("CPUID 0x%08" PRIx32 " (%s var %" PRIx32 " rev %" PRIx32 ")\n", t->cpuid, t->core,
+		   (t->cpuid & CPUID_REVISION_MASK) >> 20, t->cpuid & CPUID_PATCH_MASK);
 
 	t->attach = cortexm_attach;
 	t->detach = cortexm_detach;
@@ -367,8 +357,7 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 	}
 
 	/* Default vectors to catch */
-	priv->demcr = CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR |
-			CORTEXM_DEMCR_VC_CORERESET;
+	priv->demcr = CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR | CORTEXM_DEMCR_VC_CORERESET;
 
 	/* Check cache type */
 	uint32_t ctr = target_mem_read32(t, CORTEXM_CTR);
@@ -378,6 +367,21 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 	} else {
 		target_check_error(t);
 	}
+
+	return true;
+}
+
+bool cortexm_probe(ADIv5_AP_t *ap)
+{
+	target *t;
+
+	t = target_new();
+	if (!t) {
+		return false;
+	}
+
+	cortexm_target(t, ap);
+
 #define PROBE(x) \
 	do { if ((x)(t)) {return true;} else target_check_error(t); } while (0)
 

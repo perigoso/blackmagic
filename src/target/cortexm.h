@@ -185,6 +185,7 @@ enum cortexm_types {
 #define CPUID_REVISION_MASK 0x00f00000
 #define CPUID_PATCH_MASK 0xf
 
+bool cortexm_target(target *t, ADIv5_AP_t *ap);
 bool cortexm_probe(ADIv5_AP_t *ap);
 ADIv5_AP_t *cortexm_ap(target *t);
 

@@ -38,6 +38,7 @@
 #include "target.h"
 #include "target_internal.h"
 #include "adiv5.h"
+#include "cortexm.h"
 
 #define KINETIS_MDM_IDR_K22F 0x1c0000
 #define KINETIS_MDM_IDR_KZ03 0x1c0020
@@ -99,7 +100,6 @@ static bool kinetis_back_access_key_cmd(target *t, int argc, const char **argv);
 
 const struct command_s kinetis_cmd_list[] = {
 	{"unsafe", (cmd_handler)kinetis_cmd_unsafe, "Allow programming security byte (enable|disable)"},
-	{"backdoor", (cmd_handler)kinetis_back_access_key_cmd, "Unsecure the device using Backdoor Key Access"},
 	{NULL, NULL, NULL},
 };
 
@@ -526,10 +526,29 @@ static bool kinetis_back_access_key_cmd(target *t, int argc, const char **argv)
 
 	DEBUG_INFO("Backdoor key access, key 0x%08" PRIx32 "%08" PRIx32 " \n", key_val[0], key_val[1]);
 
-	if (kinetis_fccob_cmd(t, FTFx_CMD_BACKDOOR_ACCESS, 0, key_vals, 2))
-		return 0;
+	if (!kinetis_fccob_cmd(t, FTFx_CMD_BACKDOOR_ACCESS, 0, key_vals, 2))
+		return 1;
 
-	return 1;
+	target *new_t = target_new();
+	if (!new_t) {
+		return 1;
+	}
+
+	cortexm_target(new_t, t->priv);
+
+	if (!kinetis_probe(new_t))
+		target_check_error(new_t);
+		/* free new target? */
+
+	/* Set the new target as the current target */
+	// can't do this, no control over the cur target in gdb controller
+	// new_t->tc = t->tc;
+	// t->tc = NULL;
+
+	// t->attached = false;
+	// new_t->attached = true;
+
+	return 0;
 }
 
 /*** Kinetis recovery mode using the MDM-AP ***/
