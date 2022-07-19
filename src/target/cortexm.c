@@ -332,7 +332,7 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 		t->core = "M0";
 		break;
 	default:
-		if (ap->ap_designer != AP_DESIGNER_ATMEL) /* Protected Atmel device?*/{
+		if (ap->ap_designer != JEP106_ATMEL) /* Protected Atmel device?*/{
 			DEBUG_WARN("Unexpected CortexM CPUID partno %04" PRIx32 "\n", cpuid_partno);
 		}
 	}
@@ -405,23 +405,17 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 #endif
 
 	switch (ap->ap_designer) {
-	case AP_DESIGNER_FREESCALE:
+	case JEP106_FREESCALE:
 		PROBE(kinetis_probe);
 		if (ap->ap_partno == 0x88c) {
 			t->driver = "MIMXRT10xx(no flash)";
 			target_halt_resume(t, 0);
 		}
 		break;
-	case AP_DESIGNER_CS:
-		PROBE(stm32f1_probe);
-		break;
-	case AP_DESIGNER_GIGADEVICE:
+	case JEP106_GIGADEVICE:
 		PROBE(gd32f1_probe);
 		break;
-	case AP_DESIGNER_STM32WX:
-		PROBE(stm32l4_probe);
-		break;
-	case AP_DESIGNER_STM:
+	case JEP106_STM:
 		PROBE(stm32f1_probe);
 		PROBE(stm32f4_probe);
 		PROBE(stm32h7_probe);
@@ -429,43 +423,43 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 		PROBE(stm32l4_probe);
 		PROBE(stm32g0_probe);
 		break;
-	case AP_DESIGNER_CYPRESS:
+	case JEP106_CYPRESS:
 		DEBUG_WARN("Unhandled Cypress device\n");
 		break;
-	case AP_DESIGNER_INFINEON:
+	case JEP106_INFINEON:
 		DEBUG_WARN("Unhandled Infineon device\n");
 		break;
-	case AP_DESIGNER_NORDIC:
+	case JEP106_NORDIC:
 		PROBE(nrf51_probe);
 		break;
-	case AP_DESIGNER_ATMEL:
+	case JEP106_ATMEL:
 		PROBE(samx7x_probe);
 		PROBE(sam4l_probe);
 		PROBE(samd_probe);
 		PROBE(samx5x_probe);
 		break;
-	case AP_DESIGNER_ENERGY_MICRO:
+	case JEP106_ENERGY_MICRO:
 		PROBE(efm32_probe);
 		break;
-	case AP_DESIGNER_TEXAS:
+	case JEP106_TEXAS:
 		PROBE(msp432_probe);
 		break;
-	case AP_DESIGNER_SPECULAR:
+	case JEP106_SPECULAR:
 		PROBE(lpc11xx_probe); /* LPC845 */
 		break;
 	default:
-		if (ap->ap_designer != AP_DESIGNER_ARM) {
+		if (ap->ap_designer != JEP106_ARM) {
 			/* Report unexpected designers */
 #if PC_HOSTED == 0
-				gdb_outf("Please report Designer %3x and Partno %3x and the "
+				gdb_outf("Please report Designer 0x%3x and Partno 0x%3x and the "
 						 "probed device\n", ap->ap_designer, ap->ap_partno);
 #else
-				DEBUG_WARN("Please report Designer %3x and Partno %3x and the "
+				DEBUG_WARN("Please report Designer 0x%3x and Partno 0x%3x and the "
 						   "probed device\n", ap->ap_designer, ap->ap_partno);
 #endif
 		}
 		if (ap->ap_partno == 0x4c0)  { /* Cortex-M0+ ROM */
-			if ((ap->dp->targetid & 0xfff) == AP_DESIGNER_RASPBERRY)
+			if ((ap->dp->targetid & 0xfff) == JEP106_RASPBERRY)
 				PROBE(rp_probe);
 			PROBE(lpc11xx_probe); /* LPC8 */
 		} else if (ap->ap_partno == 0x4c3)  { /* Cortex-M3 ROM */

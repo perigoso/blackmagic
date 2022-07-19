@@ -172,7 +172,7 @@ lpc11xx_probe(target *t)
 		target_add_commands(t, lpc11xx_cmd_list, "LPC8N04");
 		return true;
 	}
-	if ((t->t_designer != AP_DESIGNER_SPECULAR) && idcode) {
+	if ((t->t_designer != JEP106_SPECULAR) && idcode) {
 		DEBUG_INFO("LPC11xx: Unknown IDCODE 0x%08" PRIx32 "\n", idcode);
 	}
 	/* For LPC802, see UM11045 Rev. 1.4 Chapter 6.6.29 Table 84
