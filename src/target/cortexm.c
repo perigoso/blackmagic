@@ -447,6 +447,9 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 	case JEP106_SPECULAR:
 		PROBE(lpc11xx_probe); /* LPC845 */
 		break;
+	case JEP106_RENESAS:
+		PROBE(renesas_probe);
+		break;
 	default:
 		if (ap->ap_designer != JEP106_ARM) {
 			/* Report unexpected designers */

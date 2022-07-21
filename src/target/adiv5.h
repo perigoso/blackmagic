@@ -151,6 +151,7 @@
 #define JEP106_CYPRESS      0x034 /* Cypress Semiconductor */
 #define JEP106_INFINEON     0x041 /* Infineon Technologies */
 #define JEP106_NORDIC       0x244 /* Nordic Semiconductor */
+#define JEP106_RENESAS	  	0x423 /* Renesas */
 #define JEP106_SPECULAR     0x501 /* LPC845 with designer 501. Strange!? Specular Networks */
 #define JEP106_ENERGY_MICRO 0x673 /* Energy Micro */
 #define JEP106_GIGADEVICE   0x751 /* GigaDevice */

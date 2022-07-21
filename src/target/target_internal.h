@@ -34,8 +34,7 @@ struct target_ram {
 
 struct target_flash;
 typedef int (*flash_erase_func)(struct target_flash *f, target_addr addr, size_t len);
-typedef int (*flash_write_func)(struct target_flash *f, target_addr dest,
-                                const void *src, size_t len);
+typedef int (*flash_write_func)(struct target_flash *f, target_addr dest, const void *src, size_t len);
 typedef int (*flash_done_func)(struct target_flash *f);
 struct target_flash {
 	target_addr start;
@@ -86,10 +85,8 @@ struct target_s {
 	bool (*check_error)(target *t);
 
 	/* Memory access functions */
-	void (*mem_read)(target *t, void *dest, target_addr src,
-	                 size_t len);
-	void (*mem_write)(target *t, target_addr dest,
-	                  const void *src, size_t len);
+	void (*mem_read)(target *t, void *dest, target_addr src, size_t len);
+	void (*mem_write)(target *t, target_addr dest, const void *src, size_t len);
 
 	/* Register access functions */
 	size_t regs_size;
@@ -107,8 +104,8 @@ struct target_s {
 	void (*halt_resume)(target *t, bool step);
 
 	/* Break-/watchpoint functions */
-	int (*breakwatch_set)(target *t, struct breakwatch*);
-	int (*breakwatch_clear)(target *t, struct breakwatch*);
+	int (*breakwatch_set)(target *t, struct breakwatch *);
+	int (*breakwatch_clear)(target *t, struct breakwatch *);
 	struct breakwatch *bw_list;
 
 	/* Recovery functions */
@@ -165,15 +162,12 @@ bool target_check_error(target *t);
 void tc_printf(target *t, const char *fmt, ...);
 
 /* Interface to host system calls */
-int tc_open(target *, target_addr path, size_t plen,
-            enum target_open_flags flags, mode_t mode);
+int tc_open(target *, target_addr path, size_t plen, enum target_open_flags flags, mode_t mode);
 int tc_close(target *t, int fd);
 int tc_read(target *t, int fd, target_addr buf, unsigned int count);
 int tc_write(target *t, int fd, target_addr buf, unsigned int count);
-long tc_lseek(target *t, int fd, long offset,
-              enum target_seek_flag flag);
-int tc_rename(target *t, target_addr oldpath, size_t oldlen,
-                         target_addr newpath, size_t newlen);
+long tc_lseek(target *t, int fd, long offset, enum target_seek_flag flag);
+int tc_rename(target *t, target_addr oldpath, size_t oldlen, target_addr newpath, size_t newlen);
 int tc_unlink(target *t, target_addr path, size_t plen);
 int tc_stat(target *t, target_addr path, size_t plen, target_addr buf);
 int tc_fstat(target *t, int fd, target_addr buf);
@@ -185,29 +179,30 @@ int tc_system(target *t, target_addr cmd, size_t cmdlen);
  * Actual functions implemented in their respective drivers.
  */
 bool ch32f1_probe(target *t); // will catch all the clones
+bool efm32_probe(target *t);
 bool gd32f1_probe(target *t);
-bool stm32f1_probe(target *t);
-bool stm32f4_probe(target *t);
-bool stm32h7_probe(target *t);
-bool stm32l0_probe(target *t);
-bool stm32l1_probe(target *t);
-bool stm32l4_probe(target *t);
-bool stm32g0_probe(target *t);
+bool ke04_probe(target *t);
+bool kinetis_probe(target *t);
 bool lmi_probe(target *t);
 bool lpc11xx_probe(target *t);
 bool lpc15xx_probe(target *t);
 bool lpc17xx_probe(target *t);
 bool lpc43xx_probe(target *t);
 bool lpc546xx_probe(target *t);
-bool samx7x_probe(target *t);
+bool msp432_probe(target *t);
+bool nrf51_probe(target *t);
+bool renesas_probe(target *t);
+bool rp_probe(target *t);
 bool sam3x_probe(target *t);
 bool sam4l_probe(target *t);
-bool nrf51_probe(target *t);
 bool samd_probe(target *t);
 bool samx5x_probe(target *t);
-bool kinetis_probe(target *t);
-bool efm32_probe(target *t);
-bool msp432_probe(target *t);
-bool ke04_probe(target *t);
-bool rp_probe(target *t);
+bool samx7x_probe(target *t);
+bool stm32f1_probe(target *t);
+bool stm32f4_probe(target *t);
+bool stm32g0_probe(target *t);
+bool stm32h7_probe(target *t);
+bool stm32l0_probe(target *t);
+bool stm32l1_probe(target *t);
+bool stm32l4_probe(target *t);
 #endif
