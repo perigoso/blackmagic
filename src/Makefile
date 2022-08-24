@@ -34,12 +34,6 @@ SRC =			\
 	jtag_devs.c	\
 	jtag_scan.c	\
 	lmi.c		\
-	lpc_common.c	\
-	lpc11xx.c	\
-	lpc17xx.c	\
-	lpc15xx.c	\
-	lpc43xx.c	\
-	lpc546xx.c	\
 	kinetis.c	\
 	main.c		\
 	morse.c		\
