@@ -297,7 +297,6 @@ int target_mem_write(target *t, target_addr_t dest, const void *src, size_t len)
 	return target_check_error(t);
 }
 
-
 /* target_mem_access_needs_halt() is true if the target needs to be halted during jtag memory access */
 
 bool target_mem_access_needs_halt(target *t)
