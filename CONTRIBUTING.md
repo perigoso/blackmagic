@@ -13,30 +13,36 @@ By participating in this project you agree to abide by its terms.
 When developing this project, the following tools are necessary:
 
 * Git
-* One of either:
-  * GCC or Clang (Clang is not strictly officially supported)
-  * [`arm-none-eabi-gcc`](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/downloads) (from ARM, self-built and distro-supplied is currently broken)
+* If you want to work on Black Magic Debug App (BMDA):
+  * GCC or Clang (Clang is not officially supported)
+* If you want to work on Black Magic Debug Probe (BMP) firmware 
+  * [`arm-none-eabi-gcc`](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/downloads) (the toolchain distributed by ARM is recommended)
 * GNU Make or compatible `make` tool
+* Pre-commit (optional, but recommended)
 
-Which of the compilers you pick depends on if you're going to work on the firwmare or Black Magic Debug App (BMDA) respectively.
 If you wish to use the older [gnu-rm](https://developer.arm.com/downloads/-/gnu-rm) ARM toolchain, this is fine and works well.
 
 ## Common tasks
 
 These are to be run at the root of your clone of Black Magic Probe.
 
-* Building the firmware: `make PROBE_HOST=native` (or whichever probe you want to build for)
+* Building the BMP firmware: `make PROBE_HOST=native` (or whichever probe you want to build for)
 * Building BMDA: `make PROBE_HOST=hosted`
 * Build testing all platforms: `make all_platforms`
+
+Adding the flag `-j` to the make commands makes them run multithreaded, speeding up the builds
 
 ## Submitting a pull request
 
 ### If contributing for the first time
 
- 1. [Fork](https://github.com/blackmagic-debug/blackmagic/fork) and clone the repository
- 2. Create a new branch: `git switch -c type/branch-name` (`git checkout -b type/branch-name` in the old syntax)
- 3. Make your change
- 4. Push to your fork and submit a [pull request](https://github.com/blackmagic-debug/blackmagic/compare)
+ 1. Take a look at [HACKING](src/target/HACKING.md)
+ 2. [Fork](https://github.com/blackmagic-debug/blackmagic/fork) and clone the repository
+ 4. Install the pre-commit hooks: `pre-commit install --install-hooks` (optional, but recommended)
+ 5. Create a new branch: `git switch -c type/branch-name` (`git checkout -b type/branch-name` in the old syntax)
+ 6. Make your change
+ 7. commit your work: `git add files-to-commit` `git commit -m "name-of-file"`
+ 8. Push to your fork and submit a [pull request](https://github.com/blackmagic-debug/blackmagic/compare)
 
 If you wish to fix a bug, `type` in the new branch name should be `fix`, otherwise if you wish to implement a new feature, `type` should be `feature`.
 
