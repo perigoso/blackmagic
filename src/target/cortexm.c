@@ -709,8 +709,9 @@ bool cortexm_probe(adiv5_access_port_s *ap)
 		} else if (t->part_id == 0x4c3U) { /* Cortex-M3 ROM */
 			PROBE(lmi_probe);
 			PROBE(ch32f1_probe);
-			PROBE(stm32f1_probe);          /* Care for other STM32F1 clones (?) */
-			PROBE(lpc15xx_probe);          /* Thanks to JojoS for testing */
+			PROBE(stm32f1_probe); /* Care for other STM32F1 clones (?) */
+			PROBE(lpc15xx_probe); /* Thanks to JojoS for testing */
+			PROBE(winner_probe);
 		} else if (t->part_id == 0x471U) { /* Cortex-M0 ROM */
 			PROBE(lpc11xx_probe);          /* LPC24C11 */
 			PROBE(lpc43xx_probe);

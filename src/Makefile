@@ -70,6 +70,7 @@ SRC =              \
 	stm32l4.c      \
 	stm32g0.c      \
 	renesas.c      \
+	winner.c	   \
 	target.c       \
 	target_flash.c \
 	target_probe.c
