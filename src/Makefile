@@ -1,6 +1,6 @@
 PROBE_HOST ?= native
-PLATFORM_DIR = platform/$(PROBE_HOST)
-VPATH += $(PLATFORM_DIR) target
+PROBE_DIR = probe/$(PROBE_HOST)
+VPATH += $(PROBE_DIR) target
 ENABLE_DEBUG ?=
 
 SYS = $(shell $(CC) -dumpmachine)
@@ -13,7 +13,7 @@ endif
 CFLAGS += -Wall -Wextra -Werror -Wreturn-type \
 	-Wno-char-subscripts \
 	-std=c11 -g3 -MD -I./target \
-	-I. -Iinclude -I$(PLATFORM_DIR)
+	-I. -Iinclude -I$(PROBE_DIR)
 
 ifeq (filter, macosx darwin, $(SYS))
 CFLAGS += -Wmaybe-uninitialized -Wstringop-overflow -Wunsafe-loop-optimizations
@@ -80,7 +80,7 @@ SRC =              \
 	target_probe.c
 
 ifeq (,$(filter all_platforms,$(MAKECMDGOALS)))
-include $(PLATFORM_DIR)/Makefile.inc
+include $(PROBE_DIR)/Makefile.inc
 endif
 
 ifneq ($(PC_HOSTED),1)
@@ -152,7 +152,7 @@ GIT_VERSION := $(shell if [ -e "../.git" ]; then git describe --always --dirty -
 clean:	host_clean
 	$(Q)echo "  CLEAN"
 	-$(Q)$(RM) *.o *.d *.elf *~ $(TARGET) $(HOSTFILES)
-	-$(Q)$(RM) platform/*/*.o platform/*/*.d mapfile
+	-$(Q)$(RM) platform/*/*.o platform/*/*.d probe/*/*.o probe/*/*.d mapfile
 ifeq ($(GIT_VERSION),)
 	@echo Git not found, not deleting include/version.h
 else
@@ -170,11 +170,8 @@ all_platforms:
 	mkdir -p artifacts/$(shell git describe --always --dirty --tags) ;\
 	echo "<html><body><ul>" > artifacts/index.html ;\
 	$(MAKE) clean ;\
-	for i in platform/*/Makefile.inc ; do \
+	for i in probe/*/Makefile.inc ; do \
 		export DIRNAME=`dirname $$i` ;\
-		if [ "$$DIRNAME" = "platform/common" ]; then \
-			continue; \
-		fi; \
 		export PROBE_HOST=`basename $$DIRNAME` ;\
 		export CFLAGS=-Werror ;\
 		echo "Building for hardware platform: $$PROBE_HOST" ;\
