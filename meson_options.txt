@@ -1,0 +1,6 @@
+option('probe', type: 'combo', choices : ['native'], value: 'native', description: 'Probe host')
+option('print_memory_usage', type: 'boolean', value: true, description: 'Print static memory usage')
+option('debug_output', type: 'boolean', value: false, description: 'Enable debug output')
+option('rtt_support', type: 'boolean', value: true, description: 'Enable RTT support')
+option('rtt_ident', type: 'string', description: 'RTT identifier string')
+option('no_own_ll', type: 'boolean', value: false, description: '???')
