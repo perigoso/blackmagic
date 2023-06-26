@@ -28,66 +28,139 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-target_includes = include_directories(
+target_common_includes = include_directories(
 	'.',
 )
 
-# !TODO: selective include
-target_sources = files(
+target_common_sources = files(
 	'adiv5_jtag.c',
 	'adiv5_swd.c',
 	'adiv5.c',
-	'ch32f1.c',
-	'cortexa.c',
-	'cortexm.c',
-	'efm32.c',
 	'gdb_reg.c',
-	'imxrt.c',
 	'jep106.h',
 	'jtag_devs.c',
 	'jtag_scan.c',
-	'kinetis.c',
-	'lmi.c',
-	'lpc_common.c',
-	'lpc11xx.c',
-	'lpc15xx.c',
-	'lpc17xx.c',
-	'lpc40xx.c',
-	'lpc43xx.c',
-	'lpc546xx.c',
-	'lpc55xx.c',
-	'msp432.c',
-	'nrf51.c',
-	'nxpke04.c',
-	'renesas.c',
-	'rp.c',
-	'sam3x.c',
-	'sam4l.c',
-	'samd.c',
-	'samx5x.c',
 	'sfdp.c',
 	'spi.c',
-	'stm32f1.c',
-	'stm32f4.c',
-	'stm32g0.c',
-	'stm32h7.c',
-	'stm32l0.c',
-	'stm32l4.c',
 	'target_flash.c',
 	'target_probe.c',
 	'target.c',
 )
 
 # TODO: What is the purpose of this? blindly ported from Makefile
-if (get_option('no_own_ll'))
-	target_sources += files(
-		'swdptap_generic.c',
+if get_option('no_own_ll')
+	target_common_sources += files(
 		'jtagtap_generic.c',
+		'swdptap_generic.c',
 	)
 endif
 
+# Conditional file compilation based on target selection
+# We declare a dependency for each target group with the source files required
+# these dependencies are then added to the BMD core, conditinal on the targets option
+# NOTE: sourceset module might be an alternative to this method (unexplored)
+target_cortexa = declare_dependency(
+	sources: files(
+		'cortexa.c',
+	),
+)
+
+target_cortexm = declare_dependency(
+	sources: files(
+		'cortexm.c',
+	),
+)
+
+target_efm = declare_dependency(
+	sources: files(
+		'efm32.c',
+	),
+	dependencies: target_cortexm,
+)
+
+target_lpc = declare_dependency(
+	sources: files(
+		'lpc_common.c',
+		'lpc11xx.c',
+		'lpc15xx.c',
+		'lpc17xx.c',
+		'lpc40xx.c',
+		'lpc43xx.c',
+		'lpc546xx.c',
+		'lpc55xx.c',
+	),
+	dependencies: target_cortexm,
+)
+
+target_nrf = declare_dependency(
+	sources: files(
+		'nrf51.c',
+	),
+	dependencies: target_cortexm,
+)
+
+target_nxp = declare_dependency(
+	sources: files(
+		'imxrt.c',
+		'kinetis.c',
+		'nxpke04.c',
+	),
+	dependencies: target_cortexm,
+)
+
+target_renesas = declare_dependency(
+	sources: files(
+		'renesas.c',
+	),
+	dependencies: target_cortexm,
+)
+
+target_rp = declare_dependency(
+	sources: files(
+		'rp.c',
+	),
+	dependencies: target_cortexm,
+)
+
+target_sam = declare_dependency(
+	sources: files(
+		'sam3x.c',
+		'sam4l.c',
+		'samd.c',
+		'samx5x.c',
+	),
+	dependencies: target_cortexm,
+)
+
+target_stm = declare_dependency(
+	sources: files(
+		'ch32f1.c',
+		'stm32f1.c',
+		'stm32f4.c',
+		'stm32g0.c',
+		'stm32h7.c',
+		'stm32l0.c',
+		'stm32l4.c',
+	),
+	dependencies: target_cortexm,
+)
+
+target_ti = declare_dependency(
+	sources: files(
+		'lmi.c',
+		'msp432.c',
+	),
+	dependencies: target_cortexm,
+)
+
+enabled_target_deps = []
+foreach target: get_option('targets')
+	enabled_target_deps += get_variable(f'target_@target@')
+endforeach
+
 # BMD target dependency
 bmd_targets = declare_dependency(
-	include_directories: target_includes,
-	sources: target_sources,
+	include_directories: target_common_includes,
+	sources: target_common_sources,
+	dependencies: enabled_target_deps,
 )

@@ -1,4 +1,5 @@
 option('probe', type: 'combo', choices : ['native'], value: 'native', description: 'Probe host')
+option('targets', type : 'array', choices : ['cortexa', 'cortexm', 'efm', 'lpc', 'nrf', 'nxp', 'renesas', 'rp', 'sam', 'stm', 'ti'], description: 'Enabled debug targets')
 option('print_memory_usage', type: 'boolean', value: true, description: 'Print static memory usage')
 option('debug_output', type: 'boolean', value: false, description: 'Enable debug output')
 option('rtt_support', type: 'boolean', value: true, description: 'Enable RTT support')
