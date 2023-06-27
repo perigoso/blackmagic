@@ -28,9 +28,44 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# include libopencm3 subproject, providing dependencies for some platforms
-libopencm3 = subproject('libopencm3')
+platform_tm4c_includes = include_directories(
+	'.',
+)
 
-subdir('common')
-subdir('stm32')
-subdir('tm4c')
+platform_tm4c_sources = files(
+	'gdb_if.c',
+	'traceswo.c',
+)
+
+platform_tm4c_args = [
+	'-mthumb',
+	'-nostdlib',
+	'-nostartfiles',
+	'-ffreestanding',
+	'-mcpu=cortex-m4',
+	'-mfloat-abi=hard',
+	'-mfpu=fpv4-sp-d16',
+	'-DLM4F',
+	'-DPC_HOSTED=0',
+]
+
+platform_tm4c_link_args = [
+	'-mcpu=cortex-m4',
+	'-mfloat-abi=hard',
+	'-mfpu=fpv4-sp-d16',
+	'-lc',
+	'-lgcc',
+	'-lnosys',
+	'-nostdlib',
+	'-nostartfiles',
+	'-ffreestanding',
+	'-Wl,-gc-sections',
+]
+
+platform_tm4c = declare_dependency(
+	include_directories: platform_tm4c_includes,
+	sources: platform_tm4c_sources,
+	compile_args: platform_tm4c_args,
+	link_args: platform_tm4c_link_args,
+	dependencies: dependency('opencm3_lm4f'),
+)
