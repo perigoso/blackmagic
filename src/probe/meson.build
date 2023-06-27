@@ -31,6 +31,7 @@
 # Map probe options aliases to probe directory
 # This is used to allow multiple probes share the same source code
 probe_alias_map = {
+	'bluepill': 'stlink',
 }
 
 probe = get_option('probe')
