@@ -1,4 +1,4 @@
-option('probe', type: 'combo', choices : ['bluepill', 'f4discovery', 'hydrabus', 'launchpad-icdi', 'native', 'stlink', 'swlink'], value: 'native', description: 'Probe host')
+option('probe', type: 'combo', choices : ['96b_carbon', 'bluepill', 'f4discovery', 'hydrabus', 'launchpad-icdi', 'native', 'stlink', 'swlink'], value: 'native', description: 'Probe host')
 option('targets', type : 'array', choices : ['cortexa', 'cortexm', 'efm', 'lpc', 'nrf', 'nxp', 'renesas', 'rp', 'sam', 'stm', 'ti'], description: 'Enabled debug targets')
 option('print_memory_usage', type: 'boolean', value: true, description: 'Print static memory usage')
 option('debug_output', type: 'boolean', value: false, description: 'Enable debug output')
