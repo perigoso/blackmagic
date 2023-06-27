@@ -28,4 +28,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-subdir(get_option('probe'))
+# Map probe options aliases to probe directory
+# This is used to allow multiple probes share the same source code
+probe_alias_map = {
+}
+
+probe = get_option('probe')
+subdir(probe in probe_alias_map ? probe_alias_map[probe] : probe)
