@@ -153,8 +153,10 @@ target_ti = declare_dependency(
 	dependencies: target_cortexm,
 )
 
+enabled_targets = get_option('targets')
+
 enabled_target_deps = []
-foreach target: get_option('targets')
+foreach target: enabled_targets
 	enabled_target_deps += get_variable(f'target_@target@')
 endforeach
 
@@ -164,3 +166,8 @@ bmd_targets = declare_dependency(
 	sources: target_common_sources,
 	dependencies: enabled_target_deps,
 )
+
+summary({
+	'Warning': 'Not all enabled targets may be listed here',
+	'Targets': enabled_targets,
+}, section: 'Targets')

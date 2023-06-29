@@ -52,3 +52,9 @@ probe_host = declare_dependency(
 	link_args: probe_f072_link_args,
 	dependencies: [platform_common, platform_stm32f0, fixme_platform_stm32_traceswo],
 )
+
+summary({
+	'Name': 'STM32F072',
+	'Platform': 'STM32F0',
+	'Bootloader': 'OEM ST Bootloader',
+}, section: 'Probe')
