@@ -158,6 +158,22 @@ if probe_bootloader.found() and get_option('bmd_bootloader')
 	alias_target('bootloader-hex', bmf_hex)
 endif
 
+## Utility targets
+## _______________
+
+# Black Magic Probe Firmware Manager
+bmputil = find_program('bmputil', required: false)
+
+if bmputil.found()
+	message('Adding target for firmware update')
+
+	# Firmware update target
+	run_target('flash',
+		command: [bmputil, 'flash', bmf_elf.full_path()],
+		depends: bmf_elf,
+	)
+endif
+
 # We report this at the of the configuration, so it's easier to spot
 warning('''The meson build system is experimental and not yet fully supported. Please use the Makefile build system instead.
 Please report any issues you find to https://github.com/blackmagic-debug/blackmagic/issues
