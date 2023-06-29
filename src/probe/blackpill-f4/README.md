@@ -2,10 +2,17 @@
 
 This code allows using a [Black Pill F4](https://github.com/WeActStudio/WeActStudio.MiniSTM32F4x1) as a Black Magic Probe.
 
-This directory contains the common code for the following platforms:
-- [blackpill-f401cc](./../../blackpill-f401cc/README.md)
-- [blackpill-f401ce](./../../blackpill-f401ce/README.md)
-- [blackpill-f411ce](./../../blackpill-f411ce/README.md)
+References to F401CC specific hardware:
+- [Zephyr Project F401CC](https://docs.zephyrproject.org/latest/boards/arm/blackpill_f401cc/doc/index.html)
+- [STM32-base F401CC](https://stm32-base.org/boards/STM32F401CCU6-WeAct-Black-Pill-V1.2)
+
+References to F401CE specific hardware:
+- [Zephyr Project F401CE](https://docs.zephyrproject.org/latest/boards/arm/blackpill_f401ce/doc/index.html)
+- [STM32-base F401CE](https://stm32-base.org/boards/STM32F401CEU6-WeAct-Black-Pill-V3.0)
+
+References to F411CE specific hardware:
+- [Zephyr Project F411CE](https://docs.zephyrproject.org/latest/boards/arm/blackpill_f411ce/doc/index.html)
+- [STM32-base F411CE](https://stm32-base.org/boards/STM32F411CEU6-WeAct-Black-Pill-V2.0)
 
 ## Pinout
 

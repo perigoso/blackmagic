@@ -32,6 +32,9 @@
 # This is used to allow multiple probes share the same source code
 probe_alias_map = {
 	'bluepill': 'stlink',
+	'blackpill-f401cc': 'blackpill-f4',
+	'blackpill-f401ce': 'blackpill-f4',
+	'blackpill-f411ce': 'blackpill-f4',
 }
 
 probe = get_option('probe')
