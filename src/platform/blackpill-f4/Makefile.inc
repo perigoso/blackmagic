@@ -10,7 +10,7 @@ CFLAGS +=                           \
 	-mfloat-abi=hard                \
 	-mfpu=fpv4-sp-d16               \
 	-DSTM32F4                       \
-	-I../libopencm3/include         \
+	-I../lib/libopencm3/include         \
 	-Iplatform/stm32        \
 	-Iplatform/blackpill-f4
 
@@ -26,7 +26,7 @@ LDFLAGS_BOOT =              \
 	-Wl,-gc-sections        \
 	-mfloat-abi=hard        \
 	-mfpu=fpv4-sp-d16       \
-	-L../libopencm3/lib
+	-L../lib/libopencm3/lib
 
 ifeq ($(BMP_BOOTLOADER), 1)
 $(info  Load address 0x08004000 for BMPBootloader)

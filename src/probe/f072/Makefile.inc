@@ -3,13 +3,13 @@ CC = $(CROSS_COMPILE)gcc
 OBJCOPY = $(CROSS_COMPILE)objcopy
 
 CFLAGS += -Istm32/include -mcpu=cortex-m0 -mthumb \
-	-DSTM32F0 -I../libopencm3/include \
+	-DSTM32F0 -I../lib/libopencm3/include \
 	-DDFU_SERIAL_LENGTH=13 -Iplatform/stm32
 
 LDFLAGS = --specs=nano.specs -lopencm3_stm32f0 \
 	-Wl,-T,probe/f072/stm32f07xzb.ld \
 	-nostartfiles -lc -lnosys -Wl,-Map=mapfile -mthumb \
-	-mcpu=cortex-m0 -Wl,-gc-sections -L../libopencm3/lib
+	-mcpu=cortex-m0 -Wl,-gc-sections -L../lib/libopencm3/lib
 
 VPATH += platform/stm32
 
@@ -25,7 +25,7 @@ all:	blackmagic.bin
 blackmagic.elf: libopencm3_stm32f0
 
 libopencm3_stm32f0:
-	$(Q)$(MAKE) $(MFLAGS) -C ../libopencm3 lib/stm32/f0
+	$(Q)$(MAKE) $(MFLAGS) -C ../lib/libopencm3 lib/stm32/f0
 
 host_clean:
 	-$(Q)$(RM) blackmagic.bin
