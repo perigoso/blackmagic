@@ -223,8 +223,73 @@ jobs:
       - name: Build full BMDA
         run: make PROBE_HOST=hosted HOSTED_BMP_ONLY=0
 
+  # This workflow tests the experimental Meson build system
+  build-linux-meson:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-20.04
+
+    # We define a matrix of GCCs and OSes to build against so we can cover a variety of
+    # suitable compilation environments and early discover issues. The `build-and-upload`
+    # workflow contains an extended set.
+    strategy:
+      matrix:
+        arm-compiler:
+          - '12.2.Rel1'
+        probe:
+          - '96b_carbon'
+          - 'bluepill'
+          - 'f072'
+          - 'f3'
+          - 'f4discovery'
+          - 'hydrabus'
+          - 'launchpad-icdi'
+          - 'native'
+          - 'stlink'
+          - 'stlinkv3'
+          - 'swlink'
+      fail-fast: false
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Build a suitable runtime environment
+      - name: Runtime environment
+        shell: bash
+        env:
+          WORKSPACE: ${{ github.workspace }}
+        # The GITHUB_WORKSPACE step here fixes https://github.com/actions/runner/issues/2058 which is an ongoing issue.
+        run: |
+          echo "$GITHUB_WORKSPACE=`pwd`" >> $GITHUB_ENV
+
+      # Setup and use a suitable ARM GCC for the firmware
+      - name: Setup ARM GCC
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: ${{ matrix.arm-compiler }}
+
+      # Record the versions of all the tools used in the build
+      # - name: Version tools
+      #   shell: bash
+      #   run: |
+      #     arm-none-eabi-gcc --version
+      #     make --version
+      #     meson --version
+      #     ninja --version
+
+      # Checkout the repository and branch to build under the default location
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Build the firmware for all platform variants (currently available)
+      - name: Build
+        uses: BSFishy/meson-build@v1.0.3
+        with:
+          action: build
+          directory: build/${{ matrix.probe }}
+          setup-options: --cross-file crossfile/arm-none-eabi.ini -Dprobe=${{ matrix.probe }}
+          meson-version: 0.58.0
+
   size-diff:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       # Setup and use a suitable ARM GCC for the firmware
