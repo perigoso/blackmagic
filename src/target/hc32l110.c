@@ -75,7 +75,7 @@
 
 static bool hc32l110_enter_flash_mode(target_s *target);
 static bool hc32l110_flash_prepare(target_flash_s *flash, flash_operation_e op);
-static bool hc32l110_flash_done(target_flash_s *flash, flash_operation_e op);
+static bool hc32l110_flash_done(target_flash_s *flash);
 static bool hc32l110_flash_erase(target_flash_s *flash, target_addr_t addr, size_t length);
 static bool hc32l110_flash_write(target_flash_s *flash, target_addr_t dest, const void *src, size_t length);
 static bool hc32l110_mass_erase(target_s *target);
@@ -185,9 +185,8 @@ static bool hc32l110_flash_prepare(target_flash_s *const flash, const flash_oper
 	return true;
 }
 
-static bool hc32l110_flash_done(target_flash_s *const flash, const flash_operation_e op)
+static bool hc32l110_flash_done(target_flash_s *const flash)
 {
-	(void)op;
 	hc32l110_slock_lock_all(flash->t);
 	return true;
 }
