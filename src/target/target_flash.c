@@ -83,21 +83,6 @@ static bool target_exit_flash_mode(target_s *t)
 	return ret;
 }
 
-static bool flash_prepare(target_flash_s *f)
-{
-	if (f->ready)
-		return true;
-
-	bool ret = true;
-	if (f->prepare)
-		ret = f->prepare(f);
-
-	if (ret == true)
-		f->ready = true;
-
-	return ret;
-}
-
 static bool flash_done(target_flash_s *f)
 {
 	if (!f->ready)
@@ -113,6 +98,21 @@ static bool flash_done(target_flash_s *f)
 	}
 
 	f->ready = false;
+
+	return ret;
+}
+
+static bool flash_prepare(target_flash_s *f)
+{
+	if (f->ready)
+		return true;
+
+	bool ret = true;
+	if (f->prepare)
+		ret = f->prepare(f);
+
+	if (ret == true)
+		f->ready = true;
 
 	return ret;
 }
