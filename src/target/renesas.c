@@ -486,8 +486,10 @@ static bool renesas_rv40_error_check(target_s *const t, const uint32_t error_bit
 	return error;
 }
 
-static bool renesas_rv40_prepare(target_flash_s *const f)
+static bool renesas_rv40_prepare(target_flash_s *const f, flash_operation_e op)
 {
+	(void)op;
+
 	target_s *const t = f->t;
 
 	if (!(target_mem_read32(t, RV40_FSTATR) & RV40_FSTATR_RDY) || target_mem_read16(t, RV40_FENTRYR) != 0) {
@@ -583,7 +585,7 @@ static bool renesas_rv40_flash_write(target_flash_s *const f, target_addr_t dest
 		target_mem_write8(t, RV40_CMD, RV40_CMD_PROGRAM);
 		target_mem_write8(t, RV40_CMD, (uint8_t)(write_size / 2U));
 
-		/* 
+		/*
 		 * According to reference manual the data buffer full time for 2 bytes is 2 usec with a FCLK of 4MHz.
 		 * A complete write should take less than 1 msec.
 		 */

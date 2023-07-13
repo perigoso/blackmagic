@@ -85,34 +85,43 @@ static bool target_exit_flash_mode(target_s *t)
 
 static bool flash_done(target_flash_s *f)
 {
-	if (!f->ready)
+	if (f->operation == FLASH_OPERATION_NONE)
 		return true;
 
 	bool ret = true;
+
+	/* Terminate flash operation */
 	if (f->done)
 		ret = f->done(f);
 
+	/* Free the operation buffer */
 	if (f->buf) {
 		free(f->buf);
 		f->buf = NULL;
 	}
 
-	f->ready = false;
+	f->operation = FLASH_OPERATION_NONE;
 
 	return ret;
 }
 
-static bool flash_prepare(target_flash_s *f)
+static bool flash_prepare(target_flash_s *f, flash_operation_e operation)
 {
-	if (f->ready)
+	if (f->operation == operation)
 		return true;
 
 	bool ret = true;
-	if (f->prepare)
-		ret = f->prepare(f);
+
+	/* Terminate any ongoing flash operation */
+	if (f->operation != FLASH_OPERATION_NONE)
+		ret = flash_done(f);
+
+	/* Prepare flash for operation, unless we failed to terminate the previous one */
+	if (ret && f->prepare)
+		ret = f->prepare(f, operation);
 
 	if (ret == true)
-		f->ready = true;
+		f->operation = operation;
 
 	return ret;
 }
@@ -143,7 +152,7 @@ bool target_flash_erase(target_s *t, target_addr_t addr, size_t len)
 		const target_addr_t local_start_addr = addr & ~(f->blocksize - 1U);
 		const target_addr_t local_end_addr = local_start_addr + f->blocksize;
 
-		if (!flash_prepare(f))
+		if (!flash_prepare(f, FLASH_OPERATION_ERASE))
 			return false;
 
 		ret &= f->erase(f, local_start_addr, f->blocksize);
@@ -181,7 +190,7 @@ static bool flash_buffered_flush(target_flash_s *f)
 		f->buf_addr_low < f->buf_addr_high) {
 		/* Write buffer to flash */
 
-		if (!flash_prepare(f))
+		if (!flash_prepare(f, FLASH_OPERATION_WRITE))
 			return false;
 
 		target_addr_t aligned_addr = f->buf_addr_low & ~(f->writesize - 1U);

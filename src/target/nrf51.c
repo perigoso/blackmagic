@@ -29,7 +29,7 @@
 
 static bool nrf51_flash_erase(target_flash_s *f, target_addr_t addr, size_t len);
 static bool nrf51_flash_write(target_flash_s *f, target_addr_t dest, const void *src, size_t len);
-static bool nrf51_flash_prepare(target_flash_s *f);
+static bool nrf51_flash_prepare(target_flash_s *f, flash_operation_e op);
 static bool nrf51_flash_done(target_flash_s *f);
 static bool nrf51_mass_erase(target_s *t);
 
@@ -176,8 +176,10 @@ static bool nrf51_wait_ready(target_s *const t, platform_timeout_s *const timeou
 	return true;
 }
 
-static bool nrf51_flash_prepare(target_flash_s *f)
+static bool nrf51_flash_prepare(target_flash_s *f, flash_operation_e op)
 {
+	(void)op;
+
 	target_s *t = f->t;
 	/* If there is a buffer allocated, we're in the Flash write phase, otherwise it's erase */
 	if (f->buf)

@@ -419,8 +419,10 @@ static bool lpc55xx_enter_flash_mode(target_s *target)
 	return true;
 }
 
-static bool lpc55xx_flash_prepare(target_flash_s *flash)
+static bool lpc55xx_flash_prepare(target_flash_s *flash, const flash_operation_e op)
 {
+	(void)op;
+
 	lpc55xx_prepare_flash_config(flash->t, LPC55xx_FLASH_CONFIG_ADDRESS);
 
 	// Initialize the IAP flash context once in a predefined location

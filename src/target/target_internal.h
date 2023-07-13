@@ -38,9 +38,15 @@ struct target_ram {
 	target_ram_s *next;
 };
 
+typedef enum flash_operation {
+	FLASH_OPERATION_NONE = 0,
+	FLASH_OPERATION_ERASE,
+	FLASH_OPERATION_WRITE
+} flash_operation_e;
+
 typedef struct target_flash target_flash_s;
 
-typedef bool (*flash_prepare_func)(target_flash_s *flash);
+typedef bool (*flash_prepare_func)(target_flash_s *flash, flash_operation_e op);
 typedef bool (*flash_erase_func)(target_flash_s *flash, target_addr_t addr, size_t len);
 typedef bool (*flash_write_func)(target_flash_s *flash, target_addr_t dest, const void *src, size_t len);
 typedef bool (*flash_done_func)(target_flash_s *flash);
@@ -53,7 +59,7 @@ struct target_flash {
 	size_t writesize;            /* Write operation size, must be <= blocksize/writebufsize */
 	size_t writebufsize;         /* Size of write buffer, this is calculated and not set in target code */
 	uint8_t erased;              /* Byte erased state */
-	bool ready;                  /* True if flash is in flash mode/prepared */
+	flash_operation_e operation; /* Current flash operation, none means it's idle/unprepared */
 	flash_prepare_func prepare;  /* Prepare for flash operations */
 	flash_erase_func erase;      /* Erase a range of flash */
 	flash_write_func write;      /* Write to flash */
