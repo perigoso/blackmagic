@@ -275,7 +275,7 @@ bool adiv5_swdp_scan(const uint32_t targetid)
  * - For multi-drop SWJ-DP, the JTAG connection is selected out of powerup reset. JTAG does not drive the line.
  * - For multi-drop SW-DP, the DP is in the dormant state out of powerup reset.
  */
-void adiv5_swdp_multidrop_scan(adiv5_debug_port_s *const dp, const uint32_t targetid)
+void adiv5_swd_multidrop_scan(adiv5_debug_port_s *dp, const uint32_t targetid)
 {
 	DEBUG_INFO("Handling swd multi-drop, TARGETID 0x%08" PRIx32 "\n", targetid);
 
@@ -304,24 +304,36 @@ void adiv5_swdp_multidrop_scan(adiv5_debug_port_s *const dp, const uint32_t targ
 			/* No DP here, next instance */
 			continue;
 
-		/* Allocate a new target DP for this instance */
-		adiv5_debug_port_s *const target_dp = calloc(1, sizeof(*dp));
-		if (!dp) { /* calloc failed: heap exhaustion */
-			DEBUG_ERROR("calloc: failed in %s\n", __func__);
+		/* Store the current instance DP, we will yield it to adiv5_dp_init and continue with a new one */
+		adiv5_debug_port_s *const instance_dp = dp;
+
+		/*
+		 * Allocate a new DP to continue with, populate it from the instance one (effectively the original DP)
+		 * if we are on the last iteration there is no need to allocate a new one so we skip it
+		 */
+		if (instance < 15U) {
+			dp = calloc(1, sizeof(*dp));
+			if (!dp) { /* calloc failed: heap exhaustion */
+				DEBUG_ERROR("calloc: failed in %s\n", __func__);
+				/* We will not abort imediately, as the instance DP is still valid, but will after yielding it bellow */
+			} else
+				memcpy(dp, instance_dp, sizeof(*dp));
+		} else
+			dp = NULL;
+
+		/* Yield the instance DP to adiv5_dp_init */
+		instance_dp->instance = instance;
+		adiv5_dp_abort(instance_dp, ADIV5_DP_ABORT_STKERRCLR);
+		adiv5_dp_init(instance_dp, 0);
+
+		/* Looks like we failed to allocate a new DP, abort */
+		if (!dp)
 			break;
-		}
-
-		/* Populate the target DP from the initial one */
-		memcpy(target_dp, dp, sizeof(*dp));
-		target_dp->instance = instance;
-
-		/* Yield the target DP to adiv5_dp_init */
-		adiv5_dp_abort(target_dp, ADIV5_DP_ABORT_STKERRCLR);
-		adiv5_dp_init(target_dp, 0);
 	}
 
-	/* free the initial DP */
-	free(dp);
+	/* If we still have a DP, free it */
+	if (dp)
+		free(dp);
 }
 
 uint32_t firmware_swdp_read(adiv5_debug_port_s *dp, uint16_t addr)
