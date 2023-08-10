@@ -94,16 +94,22 @@ typedef enum cid_class {
 #ifdef ENABLE_DEBUG
 /* The reserved ones only have an R in them, to save a bit of space. */
 static const char *const cidc_debug_strings[] = {
-	[cidc_gvc] = "Generic verification component",            /* 0x0 */
-	[cidc_romtab] = "ROM Table",                              /* 0x1 */
-	[0x2 ... 0x8] = "R",                                      /* 0x2 - 0x8 */
-	[cidc_dc] = "Debug component",                            /* 0x9 */
-	[0xa] = "R",                                              /* 0xa */
-	[cidc_ptb] = "Peripheral Test Block",                     /* 0xb */
-	[0xc] = "R",                                              /* 0xc */
-	[cidc_dess] = "OptimoDE Data Engine SubSystem component", /* 0xd */
-	[cidc_gipc] = "Generic IP component",                     /* 0xe */
-	[cidc_sys] = "Non STD System component",                  /* 0xf */
+	[cidc_gvc] = "Generic verification component",            /* 0x00 */
+	[cidc_romtab] = "ROM Table",                              /* 0x01 */
+	[0x2] = "R",                                              /* 0x02 */
+	[0x3] = "R",                                              /* 0x03 */
+	[0x4] = "R",                                              /* 0x04 */
+	[0x5] = "R",                                              /* 0x05 */
+	[0x6] = "R",                                              /* 0x06 */
+	[0x7] = "R",                                              /* 0x07 */
+	[0x8] = "R",                                              /* 0x08 */
+	[cidc_dc] = "Debug component",                            /* 0x09 */
+	[0xa] = "R",                                              /* 0x0a */
+	[cidc_ptb] = "Peripheral Test Block",                     /* 0x0b */
+	[0xc] = "R",                                              /* 0x0c */
+	[cidc_dess] = "OptimoDE Data Engine SubSystem component", /* 0x0d */
+	[cidc_gipc] = "Generic IP component",                     /* 0x0e */
+	[cidc_sys] = "Non STD System component",                  /* 0x0f */
 	[cidc_unknown] = "Unknown component class"                /* 0x10 */
 };
 #endif
