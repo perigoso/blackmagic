@@ -21,52 +21,80 @@
 #include "general.h"
 #include "target_internal.h"
 #include "gdb_packet.h"
+#include "list.h"
 
 #include <stdarg.h>
 #include <unistd.h>
 
-target_s *target_list = NULL;
-
 #define STDOUT_READ_BUF_SIZE       64U
 #define FLASH_WRITE_BUFFER_CEILING 1024U
 
+static void *target_create(void);
+static void target_destroy(void *target_ptr);
 static bool target_cmd_mass_erase(target_s *target, int argc, const char **argv);
 static bool target_cmd_range_erase(target_s *target, int argc, const char **argv);
 
-const command_s target_cmd_list[] = {
+static list_t target_list = {.constructor = target_create, .destructor = target_destroy};
+
+static const command_s target_cmd_list[] = {
 	{"erase_mass", target_cmd_mass_erase, "Erase whole device Flash"},
 	{"erase_range", target_cmd_range_erase, "Erase a range of memory on a device"},
 	{NULL, NULL, NULL},
 };
 
-target_s *target_new(void)
+static void *target_create(void)
 {
-	target_s *target = calloc(1, sizeof(*target));
+	target_s *target = calloc(1U, sizeof(*target));
 	if (!target) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return NULL;
 	}
-
-	if (target_list) {
-		target_s *last_target = target_list;
-		while (last_target->next)
-			last_target = last_target->next;
-		last_target->next = target;
-	} else
-		target_list = target;
-
-	target->target_storage = NULL;
-
 	target_add_commands(target, target_cmd_list, "Target");
+
 	return target;
 }
 
-size_t target_foreach(void (*callback)(size_t index, target_s *target, void *context), void *context)
+static void target_destroy(void *target_ptr)
 {
-	size_t idx = 0;
-	for (target_s *target = target_list; target; target = target->next)
-		callback(++idx, target, context);
-	return idx;
+	if (!target_ptr)
+		return;
+
+	target_s *const target = target_ptr;
+
+	if (target->attached)
+		target->detach(target);
+	if (target->tc && target->tc->destroy_callback)
+		target->tc->destroy_callback(target->tc, target);
+	if (target->priv)
+		target->priv_free(target->priv);
+	while (target->commands) {
+		target_command_s *const tc = target->commands->next;
+		free(target->commands);
+		target->commands = tc;
+	}
+	free(target->target_storage);
+	target_mem_map_free(target);
+	while (target->bw_list) {
+		void *next = target->bw_list->next;
+		free(target->bw_list);
+		target->bw_list = next;
+	}
+	free(target_ptr);
+}
+
+target_s *target_new(void)
+{
+	return list_emplace_back(&target_list)->data;
+}
+
+void target_list_free(void)
+{
+	list_clear(&target_list);
+}
+
+list_t *get_target_list(void)
+{
+	return &target_list;
 }
 
 void target_ram_map_free(target_s *target)
@@ -95,35 +123,6 @@ void target_mem_map_free(target_s *target)
 	target_flash_map_free(target);
 }
 
-void target_list_free(void)
-{
-	target_s *target = target_list;
-	while (target) {
-		target_s *next_target = target->next;
-		if (target->attached)
-			target->detach(target);
-		if (target->tc && target->tc->destroy_callback)
-			target->tc->destroy_callback(target->tc, target);
-		if (target->priv)
-			target->priv_free(target->priv);
-		while (target->commands) {
-			target_command_s *const tc = target->commands->next;
-			free(target->commands);
-			target->commands = tc;
-		}
-		free(target->target_storage);
-		target_mem_map_free(target);
-		while (target->bw_list) {
-			void *next = target->bw_list->next;
-			free(target->bw_list);
-			target->bw_list = next;
-		}
-		free(target);
-		target = next_target;
-	}
-	target_list = NULL;
-}
-
 void target_add_commands(target_s *target, const command_s *cmds, const char *name)
 {
 	target_command_s *command = malloc(sizeof(*command));
@@ -147,12 +146,9 @@ void target_add_commands(target_s *target, const command_s *cmds, const char *na
 
 target_s *target_attach_n(const size_t n, target_controller_s *controller)
 {
-	target_s *target = target_list;
-	for (size_t idx = 1; target; target = target->next, ++idx) {
-		if (idx == n)
-			return target_attach(target, controller);
-	}
-	return NULL;
+	target_s *const target = list_data_at(&target_list, n);
+
+	return target ? target_attach(target, controller) : NULL;
 }
 
 target_s *target_attach(target_s *target, target_controller_s *controller)

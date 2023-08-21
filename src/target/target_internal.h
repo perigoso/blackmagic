@@ -26,9 +26,7 @@
 #include <stdbool.h>
 #include "platform_support.h"
 #include "target_probe.h"
-
-extern target_s *target_list;
-target_s *target_new(void);
+#include "list.h"
 
 typedef enum flash_operation {
 	FLASH_OPERATION_NONE,
@@ -177,6 +175,9 @@ struct target {
 	 */
 	uint16_t part_id;
 };
+
+target_s *target_new(void);
+list_t *get_target_list(void);
 
 void target_print_progress(platform_timeout_s *timeout);
 void target_ram_map_free(target_s *target);

@@ -247,7 +247,7 @@ bool adiv5_swd_scan(const uint32_t targetid)
 		adiv5_dp_init(dp, 0);
 	}
 
-	return target_list != NULL;
+	return !list_empty(get_target_list());
 }
 
 /*

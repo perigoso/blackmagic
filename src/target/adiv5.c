@@ -962,7 +962,8 @@ void adiv5_dp_init(adiv5_debug_port_s *const dp, const uint32_t idcode)
 		 * Having completed discovery on this AP, if we're not in connect-under-reset mode,
 		 * and now that we're done with this AP's ROM tables, look for the target and resume the core.
 		 */
-		for (target_s *target = target_list; target; target = target->next) {
+		for (list_node_t *node = list_begin(get_target_list()); node != LIST_END; node = list_next(node)) {
+			target_s *const target = list_data(node);
 			if (!connect_assert_nrst && target->priv_free == cortexm_priv_free) {
 				adiv5_access_port_s *target_ap = cortexm_ap(target);
 				if (target_ap == ap)

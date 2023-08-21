@@ -24,6 +24,7 @@ CFLAGS += -DENABLE_DEBUG
 endif
 
 SRC =              \
+	list.c         \
 	adiv5.c        \
 	adiv5_jtag.c   \
 	adiv5_swd.c    \
