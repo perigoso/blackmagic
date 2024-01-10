@@ -917,7 +917,7 @@ void adiv5_dp_init(adiv5_debug_port_s *const dp)
 	uint32_t status = ADIV5_DP_CTRLSTAT_CSYSPWRUPACK | ADIV5_DP_CTRLSTAT_CDBGPWRUPACK;
 	/* Wait for the acknowledgements to go low */
 	while (status & (ADIV5_DP_CTRLSTAT_CSYSPWRUPACK | ADIV5_DP_CTRLSTAT_CDBGPWRUPACK)) {
-		status = adiv5_dp_read(dp, ADIV5_DP_CTRLSTAT);
+		status = adiv5_read_no_check(dp, ADIV5_DP_CTRLSTAT);
 		if (platform_timeout_is_expired(&timeout)) {
 			DEBUG_WARN("adiv5: power-down failed\n");
 			break;
@@ -931,8 +931,8 @@ void adiv5_dp_init(adiv5_debug_port_s *const dp)
 	status = 0U;
 	while (status != (ADIV5_DP_CTRLSTAT_CSYSPWRUPACK | ADIV5_DP_CTRLSTAT_CDBGPWRUPACK)) {
 		platform_delay(10);
-		status =
-			adiv5_dp_read(dp, ADIV5_DP_CTRLSTAT) & (ADIV5_DP_CTRLSTAT_CSYSPWRUPACK | ADIV5_DP_CTRLSTAT_CDBGPWRUPACK);
+		status = adiv5_read_no_check(dp, ADIV5_DP_CTRLSTAT) &
+			(ADIV5_DP_CTRLSTAT_CSYSPWRUPACK | ADIV5_DP_CTRLSTAT_CDBGPWRUPACK);
 		if (status == (ADIV5_DP_CTRLSTAT_CSYSPWRUPACK | ADIV5_DP_CTRLSTAT_CDBGPWRUPACK))
 			break;
 		if (platform_timeout_is_expired(&timeout)) {

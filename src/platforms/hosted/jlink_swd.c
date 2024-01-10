@@ -120,9 +120,9 @@ static void jlink_swd_seq_out_parity(const uint32_t tms_states, const size_t clo
 	uint8_t data[5] = {0};
 	write_le4(data, 0, tms_states);
 	/* Construct the parity bit */
-	const size_t byte = clock_cycles >> 3U;
-	const uint8_t bit = clock_cycles & 7U;
-	data[byte] |= calculate_odd_parity(tms_states) << bit;
+	const size_t parity_byte = clock_cycles >> 3U;
+	const uint8_t parity_bit = clock_cycles & 7U;
+	data[parity_byte] |= calculate_odd_parity(tms_states) << parity_bit;
 	/* Attempt the transfer */
 	if (!jlink_transfer_swd(clock_cycles + 1U, JLINK_SWD_OUT, data, NULL)) {
 		/* If things go wrong, report it */
@@ -148,7 +148,7 @@ static uint32_t jlink_swd_seq_in(const size_t clock_cycles)
 static bool jlink_swd_seq_in_parity(uint32_t *const result, const size_t clock_cycles)
 {
 	/* Create a buffer to hold the result of the transfer */
-	uint8_t data_out[5] = {0};
+	uint8_t data_out[5U] = {0};
 	/* Attempt the transfer */
 	if (!jlink_transfer_swd(clock_cycles + 1U, JLINK_SWD_IN, NULL, data_out)) {
 		DEBUG_ERROR("jlink_swd_seq_in_parity failed\n");
@@ -156,16 +156,16 @@ static bool jlink_swd_seq_in_parity(uint32_t *const result, const size_t clock_c
 	}
 
 	/* Everything went well, so pull out the sequence result and store it */
-	const uint32_t data = read_le4(data_out, 0);
+	const uint32_t data = read_le4(data_out, 0U);
+
 	/* Compute the parity and validate it */
-	const size_t byte = clock_cycles >> 3U;
-	const uint8_t bit = clock_cycles & 7U;
-	uint8_t parity = calculate_odd_parity(data);
-	parity ^= (data_out[byte] >> bit) & 1U;
+	const uint8_t parity_bit = read_lebit(data_out, clock_cycles);
+	const bool parity_error = calculate_odd_parity(data) ^ parity_bit;
+
 	/* Return the result of the calculation */
-	DEBUG_PROBE("%s %zu clock_cycles: %08" PRIx32 " %s\n", __func__, clock_cycles, data, parity ? "ERR" : "OK");
+	DEBUG_PROBE("%s %zu clock_cycles: %08" PRIx32 " %s\n", __func__, clock_cycles, data, parity_error ? "ERR" : "OK");
 	*result = data;
-	return !parity;
+	return parity_error;
 }
 
 static bool jlink_adiv5_raw_write_no_check(const uint16_t addr, const uint32_t data)
@@ -186,7 +186,7 @@ static bool jlink_adiv5_raw_write_no_check(const uint16_t addr, const uint32_t d
 	write_le4(response, 0, data);
 	response[4] = calculate_odd_parity(data);
 	/* Try sending the data to the device */
-	if (!jlink_transfer(33U + 8U, jlink_adiv5_write_request, response, NULL)) {
+	if (!jlink_transfer(41U, jlink_adiv5_write_request, response, NULL)) {
 		DEBUG_ERROR("jlink_adiv5_raw_write_no_check failed\n");
 		return false;
 	}
@@ -207,14 +207,14 @@ static uint32_t jlink_adiv5_raw_read_no_check(const uint16_t addr)
 
 	uint8_t response[5] = {0};
 	/* Try to receive the response payload */
-	if (!jlink_transfer(33U + 2U, jlink_adiv5_read_request, NULL, response)) {
+	if (!jlink_transfer(35U, jlink_adiv5_read_request, NULL, response)) {
 		DEBUG_ERROR("jlink_adiv5_raw_read_no_check failed\n");
 		return 0U;
 	}
 	/* Extract the data phase and return it if the transaction succeeded */
 	const uint32_t data = read_le4(response, 0);
 	DEBUG_PROBE("jlink_adiv5_raw_read_no_check %04x -> %08" PRIx32 " %s\n", addr, data,
-		calculate_odd_parity(data) != response[4] ? "ERR" : "OK");
+		calculate_odd_parity(data) ^ read_lebit(response, 32U) ? "ERR" : "OK");
 	return ack == SWDP_ACK_OK ? data : 0U;
 }
 
@@ -222,17 +222,18 @@ static uint32_t jlink_adiv5_raw_read(adiv5_debug_port_s *const dp)
 {
 	uint8_t result[5] = {0};
 	/* Try to receive the result payload */
-	if (!jlink_transfer(33U + 2U, jlink_adiv5_read_request, NULL, result)) {
+	if (!jlink_transfer(35U, jlink_adiv5_read_request, NULL, result)) {
 		DEBUG_ERROR("jlink_adiv5_raw_read failed\n");
 		return 0U;
 	}
 	/* Extract the data phase */
 	const uint32_t response = read_le4(result, 0);
+	/* Extract the parity bit */
+	const uint8_t parity_bit = read_lebit(result, 32U);
 	/* Calculate and do a parity check */
-	uint8_t parity = calculate_odd_parity(response);
-	parity ^= result[4] & 1U;
+	const bool parity_error = parity_bit ^ calculate_odd_parity(response);
 	/* If that fails, turn it into an error */
-	if (parity) {
+	if (parity_error) {
 		dp->fault = 1;
 		DEBUG_ERROR("SWD access resulted in parity error\n");
 		raise_exception(EXCEPTION_ERROR, "SWD parity error");

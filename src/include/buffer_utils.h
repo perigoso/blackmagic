@@ -51,6 +51,13 @@ static inline void write_le4(uint8_t *const buffer, const size_t offset, const u
 	buffer[offset + 3U] = (value >> 24U) & 0xffU;
 }
 
+static inline void write_lebit(uint8_t *const buffer, const size_t bit, const uint8_t value)
+{
+	const size_t byte_offset = bit >> 3U;
+	const uint8_t bit_offset = bit & 7U;
+	buffer[byte_offset] = (buffer[byte_offset] & ~(1U << bit_offset)) | ((value & 1U) << bit_offset);
+}
+
 static inline uint16_t read_le2(const uint8_t *const buffer, const size_t offset)
 {
 	return buffer[offset + 0U] | ((uint16_t)buffer[offset + 1U] << 8U);
@@ -66,6 +73,13 @@ static inline uint32_t read_be4(const uint8_t *const buffer, const size_t offset
 {
 	return ((uint32_t)buffer[offset + 0U] << 24U) | ((uint32_t)buffer[offset + 1U] << 16U) |
 		((uint32_t)buffer[offset + 2U] << 8U) | buffer[offset + 3U];
+}
+
+static inline uint8_t read_lebit(const uint8_t *const buffer, const size_t bit)
+{
+	const size_t byte_offset = bit >> 3U;
+	const uint8_t bit_offset = bit & 7U;
+	return (buffer[byte_offset] >> bit_offset) & 1U;
 }
 
 #endif /*INCLUDE_BUFFER_UTILS_H*/
