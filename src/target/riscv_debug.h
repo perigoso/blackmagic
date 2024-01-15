@@ -171,6 +171,10 @@ typedef struct riscv_hart {
 #define RV_DM_DATA3             0x07U
 #define RV_DM_ABST_CTRLSTATUS   0x16U
 #define RV_DM_ABST_COMMAND      0x17U
+#define RV_DM_ABST_AUTO         0x18U
+#define RV_DM_PROGBUF0          0x20U
+#define RV_DM_PROGBUF1          0x21U
+#define RV_DM_PROGBUF2          0x22U
 #define RV_DM_SYSBUS_CTRLSTATUS 0x38U
 #define RV_DM_SYSBUS_ADDR0      0x39U
 #define RV_DM_SYSBUS_ADDR1      0x3aU
