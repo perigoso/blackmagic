@@ -36,6 +36,7 @@
 #include "target_internal.h"
 #include "gdb_reg.h"
 #include "riscv_debug.h"
+#include "buffer_utils.h"
 
 #include <assert.h>
 
@@ -419,6 +420,58 @@ static void riscv_hart_read_ids(riscv_hart_s *const hart)
 	/* rv128 is unimpl. */
 }
 
+static size_t riscv_snprint_isa_subset(
+	char *const string_buffer, const size_t buffer_size, const uint32_t access_width, const uint32_t extensions)
+{
+	size_t offset = snprintf(string_buffer, buffer_size, "rv%" PRIu8, access_width);
+
+	const bool is_embedded = extensions & RV_ISA_EXT_EMBEDDED;
+
+	offset = write_char(string_buffer, buffer_size, offset, is_embedded ? 'e' : 'i');
+
+	const bool is_general_purpose_isa =
+		!is_embedded && (extensions & RV_ISA_EXT_GENERAL_PURPOSE) == RV_ISA_EXT_GENERAL_PURPOSE;
+
+	if (is_general_purpose_isa) {
+		offset = write_char(string_buffer, buffer_size, offset, 'g');
+		if (extensions & RV_ISA_EXT_QUAD_FLOAT)
+			offset = write_char(string_buffer, buffer_size, offset, 'q');
+	} else {
+		if (extensions & RV_ISA_EXT_MUL_DIV_INT)
+			offset = write_char(string_buffer, buffer_size, offset, 'm');
+		if (extensions & RV_ISA_EXT_ATOMIC)
+			offset = write_char(string_buffer, buffer_size, offset, 'a');
+		if (extensions & RV_ISA_EXT_QUAD_FLOAT)
+			offset = write_char(string_buffer, buffer_size, offset, 'q'); /* Implies d */
+		else if (extensions & RV_ISA_EXT_DOUBLE_FLOAT)
+			offset = write_char(string_buffer, buffer_size, offset, 'd'); /* Implies f */
+		else if (extensions & RV_ISA_EXT_SINGLE_FLOAT)
+			offset = write_char(string_buffer, buffer_size, offset, 'f');
+	}
+	if (extensions & RV_ISA_EXT_DECIMAL_FLOAT)
+		offset = write_char(string_buffer, buffer_size, offset, 'l');
+	if (extensions & RV_ISA_EXT_COMPRESSED)
+		offset = write_char(string_buffer, buffer_size, offset, 'c');
+	if (extensions & RV_ISA_EXT_BIT_MANIP)
+		offset = write_char(string_buffer, buffer_size, offset, 'b');
+	if (extensions & RV_ISA_EXT_DYNAMIC_LANG)
+		offset = write_char(string_buffer, buffer_size, offset, 'j');
+	if (extensions & RV_ISA_EXT_TRANSACT_MEM)
+		offset = write_char(string_buffer, buffer_size, offset, 't');
+	if (extensions & RV_ISA_EXT_PACKED_SIMD)
+		offset = write_char(string_buffer, buffer_size, offset, 'p');
+	if (extensions & RV_ISA_EXT_VECTOR)
+		offset = write_char(string_buffer, buffer_size, offset, 'v');
+	if (extensions & RV_ISA_EXT_USER_INTERRUPTS)
+		offset = write_char(string_buffer, buffer_size, offset, 'n');
+
+	/* null-terminate the string */
+	if (string_buffer && buffer_size > 0)
+		string_buffer[offset < buffer_size ? offset : buffer_size - 1U] = '\0';
+
+	return offset;
+}
+
 static bool riscv_hart_init(riscv_hart_s *const hart)
 {
 	/* Allocate a new target */
@@ -442,9 +495,12 @@ static bool riscv_hart_init(riscv_hart_s *const hart)
 	/* Then read out the ID registers */
 	riscv_hart_read_ids(hart);
 
-	DEBUG_INFO("Hart %" PRIx32 ": %u-bit RISC-V (arch = %08" PRIx32 "), vendor = %" PRIx32 ", impl = %" PRIx32
-			   ", exts = %08" PRIx32 "\n",
-		hart->hartid, hart->access_width, hart->archid, hart->vendorid, hart->implid, hart->extensions);
+	/* Build the ISA subset string from the Hart */
+	riscv_snprint_isa_subset(hart->isa_name, sizeof(hart->isa_name), hart->access_width, hart->extensions);
+
+	DEBUG_INFO("Hart %" PRIx32 ": %u-bit RISC-V (arch = %08" PRIx32 "), %s ISA (exts = %08" PRIx32
+			   "), vendor = %" PRIx32 ", impl = %" PRIx32 "\n",
+		hart->hartid, hart->access_width, hart->archid, hart->isa_name, hart->extensions, hart->vendorid, hart->implid);
 
 	/* We don't support rv128, so tell the user and fast-quit on this target. */
 	if (hart->access_width == 128U) {
@@ -1103,85 +1159,6 @@ static void riscv_reset(target_s *const target)
 	target_check_error(target);
 }
 
-static const char *riscv_fpu_ext_string(const uint32_t extensions)
-{
-	if (extensions & RV_ISA_EXT_QUAD_FLOAT)
-		return "q";
-	if (extensions & RV_ISA_EXT_DOUBLE_FLOAT)
-		return "d";
-	if (extensions & RV_ISA_EXT_SINGLE_FLOAT)
-		return "f";
-	return "";
-}
-
-/*
- * Generate the FPU section of the description.
- * fpu_size = 32 -> single precision float
- * fpu_size = 64 -> double precision float
- * The following XML-equivalent is only generated for an F core (single precision HW float support):
- *  <feature name="org.gnu.gdb.riscv.fpu">
- *      <reg name="ft0" bitsize="32" regnum="33" />
- *      <reg name="ft1" bitsize="32" regnum="34" />
- *      <reg name="ft2" bitsize="32" regnum="35" />
- *      <reg name="ft3" bitsize="32" regnum="36" />
- *      <reg name="ft4" bitsize="32" regnum="37" />
- *      <reg name="ft5" bitsize="32" regnum="38" />
- *      <reg name="ft6" bitsize="32" regnum="39" />
- *      <reg name="ft7" bitsize="32" regnum="40" />
- *      <reg name="fs0" bitsize="32" regnum="41" />
- *      <reg name="fs1" bitsize="32" regnum="42" />
- *      <reg name="fa0" bitsize="32" regnum="43" />
- *      <reg name="fa1" bitsize="32" regnum="44" />
- *      <reg name="fa2" bitsize="32" regnum="45" />
- *      <reg name="fa3" bitsize="32" regnum="46" />
- *      <reg name="fa4" bitsize="32" regnum="47" />
- *      <reg name="fa5" bitsize="32" regnum="48" />
- *      <reg name="fa6" bitsize="32" regnum="49" />
- *      <reg name="fa7" bitsize="32" regnum="50" />
- *      <reg name="fs2" bitsize="32" regnum="51" />
- *      <reg name="fs3" bitsize="32" regnum="52" />
- *      <reg name="fs4" bitsize="32" regnum="53" />
- *      <reg name="fs5" bitsize="32" regnum="54" />
- *      <reg name="fs6" bitsize="32" regnum="55" />
- *      <reg name="fs7" bitsize="32" regnum="56" />
- *      <reg name="fs8" bitsize="32" regnum="57" />
- *      <reg name="fs9" bitsize="32" regnum="58" />
- *      <reg name="fs10" bitsize="32" regnum="59" />
- *      <reg name="fs11" bitsize="32" regnum="60" />
- *      <reg name="ft8" bitsize="32" regnum="61" />
- *      <reg name="ft9" bitsize="32" regnum="62" />
- *      <reg name="ft10" bitsize="32" regnum="63" />
- *      <reg name="ft11" bitsize="32" regnum="64" />
- *      <reg name="fflags" bitsize="32" regnum="66" save-restore="no"/>
- *      <reg name="frm" bitsize="32" regnum="67" save-restore="no"/>
- *      <reg name="fcsr" bitsize="32" regnum="68" save-restore="no"/>
- *  </feature>
- */
-static size_t riscv_build_target_fpu_description(char *const buffer, size_t max_length, size_t fpu_size)
-{
-	const size_t first_fpu_register = RV_FPU_GDB_OFFSET;             // see riscv_debug.h
-	const size_t first_fpu_control_register = RV_FPU_GDB_CSR_OFFSET; // see riscv_debug.h
-	size_t offset = 0U;
-	size_t print_size = max_length;
-	offset += (size_t)snprintf(buffer + offset, print_size, "</feature><feature name=\"org.gnu.gdb.riscv.fpu\">");
-
-	for (size_t i = 0U; i < ARRAY_LENGTH(riscv_fpu_regs); ++i) {
-		if (max_length != 0U)
-			print_size = max_length - offset;
-		offset += (size_t)snprintf(buffer + offset, print_size,
-			"<reg name=\"f%s\" bitsize=\"%" PRIu32 "\"  regnum=\"%" PRIu32 "\"/>", riscv_fpu_regs[i],
-			(uint32_t)fpu_size, (uint32_t)(i + first_fpu_register));
-	}
-	for (size_t i = 0U; i < ARRAY_LENGTH(riscv_fpu_ctrl_regs); ++i) {
-		if (max_length != 0U)
-			print_size = max_length - offset;
-		offset += (size_t)snprintf(buffer + offset, print_size,
-			"<reg name=\"f%s\" bitsize=\"%" PRIu32 "\" regnum=\"%" PRIu32 "\" save-restore=\"no\"/>",
-			riscv_fpu_ctrl_regs[i], (uint32_t)fpu_size, (uint32_t)(i + first_fpu_control_register));
-	}
-	return offset;
-}
-
 /*
  * This function creates the target description XML string for a RISC-V part.
  * This is done this way to decrease string duplication and thus code size, making it
@@ -1232,19 +1209,24 @@ static size_t riscv_build_target_fpu_description(char *const buffer, size_t max_
  *  </target>
  */
 static size_t riscv_build_target_description(
-	char *const buffer, size_t max_length, const uint8_t address_width, const uint32_t extensions)
+	char *const buffer, const size_t max_length, const uint8_t address_width, const uint32_t extensions)
 {
-	const bool embedded = extensions & RV_ISA_EXT_EMBEDDED;
-	const uint32_t fpu = extensions & RV_ISA_EXT_ANY_FLOAT;
-
 	size_t print_size = max_length;
 	/* Start with the "preamble" chunks, which are mostly common across targets save for 2 words. */
-	size_t offset =
-		(size_t)snprintf(buffer, print_size, "%s target %sriscv:rv%u%c%s%s <feature name=\"org.gnu.gdb.riscv.cpu\">",
-			gdb_xml_preamble_first, gdb_xml_preamble_second, address_width, embedded ? 'e' : 'i',
-			riscv_fpu_ext_string(fpu), gdb_xml_preamble_third);
+	int offset = snprintf(buffer, print_size, "%s target %sriscv:", gdb_xml_preamble_first, gdb_xml_preamble_second);
+	if (max_length != 0)
+		print_size = max_length - (size_t)offset;
+	/* Write the architecture string, which is the ISA subset */
+	offset += riscv_snprint_isa_subset(buffer + offset, print_size, address_width, extensions);
+	if (max_length != 0)
+		print_size = max_length - (size_t)offset;
+	/* Finally finish the rest of the preamble */
+	offset +=
+		snprintf(buffer + offset, print_size, "%s <feature name=\"org.gnu.gdb.riscv.cpu\">", gdb_xml_preamble_third);
+	if (max_length != 0)
+		print_size = max_length - (size_t)offset;
 
-	const uint8_t gprs = embedded ? 16U : 32U;
+	const uint8_t gprs = extensions & RV_ISA_EXT_EMBEDDED ? 16U : 32U;
 	/* Then build the general purpose register descriptions using the arrays at top of file */
 	/* Note that in a device using the embedded (E) extension, we only generate the first 16. */
 	for (uint8_t i = 0; i < gprs; ++i) {
