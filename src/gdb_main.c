@@ -38,6 +38,7 @@
 #include "target_internal.h"
 #include "semihosting.h"
 #include "command.h"
+#include "remote.h"
 #include "crc32.h"
 #include "morse.h"
 #ifdef ENABLE_RTT
@@ -116,6 +117,14 @@ target_controller_s gdb_controller = {
 /* execute gdb remote command stored in 'pbuf'. returns immediately, no busy waiting. */
 int32_t gdb_main_loop(target_controller_s *const tc, const gdb_packet_s *const packet, const bool in_syscall)
 {
+#if CONFIG_BMDA == 0
+	/* Delegate handling of remote packets */
+	if (packet->type == GDB_PACKET_BMD_REMOTE) {
+		remote_packet_process(packet);
+		return 0;
+	}
+#endif
+
 	bool single_step = false;
 	const char *rest = NULL;
 

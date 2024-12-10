@@ -52,6 +52,14 @@
 #define GDB_FORMAT_ATTR
 #endif
 
+/* GDB packet types */
+typedef enum gdb_packet_type {
+	GDB_PACKET_UNDEFINED = 0,
+	GDB_PACKET_STANDARD,
+	GDB_PACKET_NOTIFICATION,
+	GDB_PACKET_BMD_REMOTE,
+} gdb_packet_type_e;
+
 /*
  * GDB packet structure
  * This is used to store the packet data during transmission and reception
@@ -64,7 +72,7 @@ typedef struct gdb_packet {
 	/* Data must be first to ensure alignment */
 	char data[GDB_PACKET_BUFFER_SIZE + 1U]; /* Packet data */
 	size_t size;                            /* Packet data size */
-	bool notification;                      /* Notification packet */
+	gdb_packet_type_e type;                 /* Packet type */
 } gdb_packet_s;
 
 /* GDB packet transmission configuration */
@@ -74,22 +82,32 @@ void gdb_set_noackmode(bool enable);
 gdb_packet_s *gdb_packet_receive(void);
 void gdb_packet_send(const gdb_packet_s *packet);
 
-char *gdb_packet_buffer(void);
+gdb_packet_s *gdb_packet_buffer(void);
 
 /* Convenience wrappers */
-void gdb_putpacket(const char *preamble, size_t preamble_size, const char *data, size_t data_size, bool hex_data);
+void gdb_putpacket_generic(gdb_packet_type_e type, const char *preamble, size_t preamble_size, const char *data,
+	size_t data_size, bool hex_data);
+
+static inline void gdb_putpacket(
+	const char *preamble, size_t preamble_size, const char *data, size_t data_size, bool hex_data)
+{
+	gdb_putpacket_generic(GDB_PACKET_STANDARD, preamble, preamble_size, data, data_size, hex_data);
+}
 
 static inline void gdb_putpacketz(const char *const str)
 {
-	gdb_putpacket(str, strlen(str), NULL, 0, false);
+	gdb_putpacket_generic(GDB_PACKET_STANDARD, str, strlen(str), NULL, 0, false);
 }
 
 static inline void gdb_putpacketx(const void *const data, const size_t size)
 {
-	gdb_putpacket(NULL, 0, (const char *)data, size, true);
+	gdb_putpacket_generic(GDB_PACKET_STANDARD, NULL, 0, (const char *)data, size, true);
 }
 
-void gdb_put_notificationz(const char *const str);
+static inline void gdb_put_notificationz(const char *const str)
+{
+	gdb_putpacket_generic(GDB_PACKET_NOTIFICATION, str, strlen(str), NULL, 0, false);
+}
 
 /* Formatted output */
 void gdb_putpacket_f(const char *fmt, ...) GDB_FORMAT_ATTR;

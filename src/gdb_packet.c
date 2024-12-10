@@ -37,17 +37,17 @@ typedef enum packet_state {
 	PACKET_GDB_ESCAPE,
 	PACKET_GDB_CHECKSUM_UPPER,
 	PACKET_GDB_CHECKSUM_LOWER,
+	PACKET_BMD_REMOTE_CAPTURE,
+	PACKET_COMPLETE,
 } packet_state_e;
 
 static bool noackmode = false;
 
-/* This has to be aligned so the remote protocol can re-use it without causing Problems */
-static gdb_packet_s BMD_ALIGN_DEF(8) packet_buffer;
-
-char *gdb_packet_buffer(void)
+gdb_packet_s *gdb_packet_buffer(void)
 {
-	/* Return the static packet data buffer */
-	return packet_buffer.data;
+	/* This has to be aligned so the remote protocol can re-use it without causing Problems */
+	static gdb_packet_s BMD_ALIGN_DEF(8) packet_buffer;
+	return &packet_buffer;
 }
 
 /* https://sourceware.org/gdb/onlinedocs/gdb/Packet-Acknowledgment.html */
@@ -87,11 +87,15 @@ static void gdb_packet_debug(const char *const func, const gdb_packet_s *const p
 }
 #endif
 
-static inline bool gdb_packet_is_reserved(const char character)
+static inline bool gdb_packet_is_reserved(const char character, gdb_packet_type_e type)
 {
 	/* Check if the character is a reserved GDB packet character */
-	return character == GDB_PACKET_START || character == GDB_PACKET_END || character == GDB_PACKET_ESCAPE ||
-		character == GDB_PACKET_RUNLENGTH_START;
+	if (type == GDB_PACKET_BMD_REMOTE)
+		return character == GDB_PACKET_START || character == REMOTE_RESP || character == REMOTE_SOM ||
+			character == REMOTE_EOM;
+	else
+		return character == GDB_PACKET_START || character == GDB_PACKET_END || character == GDB_PACKET_ESCAPE ||
+			character == GDB_PACKET_RUNLENGTH_START;
 }
 
 static uint8_t gdb_packet_checksum(const gdb_packet_s *const packet)
@@ -100,7 +104,7 @@ static uint8_t gdb_packet_checksum(const gdb_packet_s *const packet)
 	uint8_t checksum = 0;
 	for (size_t i = 0; i < packet->size; i++) {
 		const char character = packet->data[i];
-		if (gdb_packet_is_reserved(character))
+		if (gdb_packet_is_reserved(character, packet->type))
 			checksum += GDB_PACKET_ESCAPE + (character ^ GDB_PACKET_ESCAPE_XOR);
 		else
 			checksum += character;
@@ -108,101 +112,46 @@ static uint8_t gdb_packet_checksum(const gdb_packet_s *const packet)
 	return checksum;
 }
 
-packet_state_e consume_remote_packet(char *const packet, const size_t size)
-{
-#if CONFIG_BMDA == 0
-	/* We got what looks like probably a remote control packet */
-	size_t offset = 0;
-	while (true) {
-		/* Consume bytes until we either have a complete remote control packet or have to leave this mode */
-		const char rx_char = gdb_if_getchar();
-
-		switch (rx_char) {
-		case '\x04':
-			packet[0] = rx_char;
-			/* EOT (end of transmission) - connection was closed */
-			return PACKET_IDLE;
-
-		case REMOTE_SOM:
-			/* Oh dear, restart remote packet capture */
-			offset = 0;
-			break;
-
-		case REMOTE_EOM:
-			/* Complete packet for processing */
-
-			/* Null terminate packet */
-			packet[offset] = '\0';
-			/* Handle packet */
-			remote_packet_process(packet, offset);
-
-			/* Restart packet capture */
-			packet[0] = '\0';
-			return PACKET_IDLE;
-
-		case GDB_PACKET_START:
-			/* A 'real' gdb packet, best stop squatting now */
-			return PACKET_GDB_CAPTURE;
-
-		default:
-			if (offset < size)
-				packet[offset++] = rx_char;
-			else {
-				packet[0] = '\0';
-				/* Buffer overflow, restart packet capture */
-				return PACKET_IDLE;
-			}
-		}
-	}
-#else
-	(void)packet;
-	(void)size;
-
-	/* Hosted builds ignore remote control packets */
-	return PACKET_IDLE;
-#endif
-}
-
 gdb_packet_s *gdb_packet_receive(void)
 {
 	packet_state_e state = PACKET_IDLE; /* State of the packet capture */
 	uint8_t rx_checksum = 0;
 
+	/* Get the packet buffer */
+	gdb_packet_s *const packet = gdb_packet_buffer();
 	while (true) {
 		const char rx_char = gdb_if_getchar();
 
 		switch (state) {
 		case PACKET_IDLE:
-			packet_buffer.data[0U] = rx_char;
 			if (rx_char == GDB_PACKET_START) {
 				/* Start of GDB packet */
 				state = PACKET_GDB_CAPTURE;
-				packet_buffer.size = 0;
-				packet_buffer.notification = false;
+				packet->size = 0;
+				packet->type = GDB_PACKET_STANDARD;
 			}
 #if CONFIG_BMDA == 0
 			else if (rx_char == REMOTE_SOM) {
 				/* Start of BMP remote packet */
-				/*
-				 * Let consume_remote_packet handle this
-				 * returns PACKET_IDLE or PACKET_GDB_CAPTURE if it detects the start of a GDB packet
-				 */
-				state = consume_remote_packet(packet_buffer.data, GDB_PACKET_BUFFER_SIZE);
-				packet_buffer.size = 0;
+				state = PACKET_BMD_REMOTE_CAPTURE;
+				packet->size = 0;
+				packet->type = GDB_PACKET_BMD_REMOTE;
 			}
 #endif
 			/* EOT (end of transmission) - connection was closed */
 			else if (rx_char == '\x04') {
-				packet_buffer.data[1U] = '\0'; /* Null terminate */
-				packet_buffer.size = 1U;
-				return &packet_buffer;
+				packet->data[0U] = rx_char;
+				packet->data[1U] = '\0'; /* Null terminate */
+				packet->size = 1U;
+				packet->type = GDB_PACKET_UNDEFINED;
+				return packet;
 			}
 			break;
 
 		case PACKET_GDB_CAPTURE:
 			if (rx_char == GDB_PACKET_START) {
 				/* Restart GDB packet capture */
-				packet_buffer.size = 0;
+				packet->size = 0;
 				break;
 			}
 			if (rx_char == GDB_PACKET_END) {
@@ -219,12 +168,12 @@ gdb_packet_s *gdb_packet_receive(void)
 				state = PACKET_GDB_ESCAPE;
 			else
 				/* Add to packet buffer */
-				packet_buffer.data[packet_buffer.size++] = rx_char;
+				packet->data[packet->size++] = rx_char;
 			break;
 
 		case PACKET_GDB_ESCAPE:
 			/* Resolve escaped char */
-			packet_buffer.data[packet_buffer.size++] = rx_char ^ GDB_PACKET_ESCAPE_XOR;
+			packet->data[packet->size++] = rx_char ^ GDB_PACKET_ESCAPE_XOR;
 
 			/* Return to normal packet capture */
 			state = PACKET_GDB_CAPTURE;
@@ -245,7 +194,7 @@ gdb_packet_s *gdb_packet_receive(void)
 				rx_checksum |= unhex_digit(rx_char); /* BITWISE OR lower nibble with upper nibble */
 
 				/* (N)Acknowledge packet */
-				const bool checksum_ok = gdb_packet_checksum(&packet_buffer) == rx_checksum;
+				const bool checksum_ok = gdb_packet_checksum(packet) == rx_checksum;
 				gdb_if_putchar(checksum_ok ? GDB_PACKET_ACK : GDB_PACKET_NACK, true);
 				if (!checksum_ok) {
 					/* Checksum error, restart packet capture */
@@ -255,15 +204,40 @@ gdb_packet_s *gdb_packet_receive(void)
 			}
 
 			/* Null terminate packet */
-			packet_buffer.data[packet_buffer.size] = '\0';
+			packet->data[packet->size] = '\0';
 
 #if ENABLE_DEBUG == 1
 			/* Log packet for debugging */
-			gdb_packet_debug(__func__, &packet_buffer);
+			gdb_packet_debug(__func__, packet);
 #endif
 
 			/* Return captured packet */
-			return &packet_buffer;
+			return packet;
+
+#if CONFIG_BMDA == 0
+		case PACKET_BMD_REMOTE_CAPTURE:
+			if (rx_char == REMOTE_SOM) {
+				/* Oh dear, restart remote packet capture */
+				packet->size = 0;
+			} else if (rx_char == REMOTE_EOM) {
+				/* Complete packet for processing */
+
+				/* Null terminate packet */
+				packet->data[packet->size] = '\0';
+
+				/* Return captured packet */
+				return packet;
+			} else if (rx_char == GDB_PACKET_START) {
+				/* A 'real' gdb packet, best stop squatting now */
+				state = PACKET_GDB_CAPTURE;
+				packet->size = 0;
+				packet->type = GDB_PACKET_STANDARD;
+			} else {
+				/* Add character to packet */
+				packet->data[packet->size++] = rx_char;
+			}
+			break;
+#endif
 
 		default:
 			/* Something is not right, restart packet capture */
@@ -271,7 +245,7 @@ gdb_packet_s *gdb_packet_receive(void)
 			break;
 		}
 
-		if (packet_buffer.size >= GDB_PACKET_BUFFER_SIZE)
+		if (packet->size >= GDB_PACKET_BUFFER_SIZE)
 			/* Buffer overflow, restart packet capture */
 			state = PACKET_IDLE;
 	}
@@ -287,10 +261,10 @@ static inline bool gdb_get_ack(const uint32_t timeout)
 	return gdb_if_getchar_to(timeout) == GDB_PACKET_ACK;
 }
 
-static inline void gdb_if_putchar_escaped(const char value)
+static inline void gdb_if_putchar_escaped(const char value, const gdb_packet_type_e type)
 {
 	/* Escape reserved characters */
-	if (gdb_packet_is_reserved(value)) {
+	if (gdb_packet_is_reserved(value, type)) {
 		gdb_if_putchar(GDB_PACKET_ESCAPE, false);
 		gdb_if_putchar((char)((uint8_t)value ^ GDB_PACKET_ESCAPE_XOR), false);
 	} else {
@@ -298,26 +272,61 @@ static inline void gdb_if_putchar_escaped(const char value)
 	}
 }
 
+static inline char gdb_packet_start(const gdb_packet_type_e type)
+{
+	/* Return the start character of the packet */
+	switch (type) {
+	case GDB_PACKET_STANDARD:
+		return GDB_PACKET_START;
+	case GDB_PACKET_NOTIFICATION:
+		return GDB_PACKET_NOTIFICATION_START;
+	case GDB_PACKET_BMD_REMOTE:
+		return REMOTE_RESP; /* RESP not SOM as we only send responses */
+	default:
+		return '\0';
+	}
+}
+
+static inline char gdb_packet_end(const gdb_packet_type_e type)
+{
+	/* Return the start character of the packet */
+	switch (type) {
+	case GDB_PACKET_STANDARD:
+	case GDB_PACKET_NOTIFICATION:
+		return GDB_PACKET_END;
+	case GDB_PACKET_BMD_REMOTE:
+		return REMOTE_EOM;
+	default:
+		return '\0';
+	}
+}
+
 void gdb_packet_send(const gdb_packet_s *const packet)
 {
-	/* Calculate checksum first to avoid re-calculation */
-	const uint8_t checksum = gdb_packet_checksum(packet);
+	/* Silently ignore invalid packets */
+	if (packet->type == GDB_PACKET_UNDEFINED)
+		return;
 
 	/* Attempt packet transmission up to retries */
-	for (size_t attempt = 0U; attempt < GDB_PACKET_RETRIES; attempt++) {
+	const size_t retries = packet->type == GDB_PACKET_STANDARD ? GDB_PACKET_RETRIES : 1U;
+	for (size_t attempt = 0U; attempt < retries; attempt++) {
 		/* Write start of packet */
-		gdb_if_putchar(packet->notification ? GDB_PACKET_NOTIFICATION_START : GDB_PACKET_START, false);
+		gdb_if_putchar(gdb_packet_start(packet->type), false);
 
 		/* Write packet data */
 		for (size_t i = 0; i < packet->size; ++i)
-			gdb_if_putchar_escaped(packet->data[i]);
+			gdb_if_putchar_escaped(packet->data[i], packet->type);
 
-		/* Write end of packet */
-		gdb_if_putchar(GDB_PACKET_END, false);
+		/* Write end of packet, flush if remote packet */
+		gdb_if_putchar(gdb_packet_end(packet->type), packet->type == GDB_PACKET_BMD_REMOTE);
 
-		/* Write checksum and flush the buffer */
-		gdb_if_putchar(hex_digit(checksum >> 4U), false);
-		gdb_if_putchar(hex_digit(checksum & 0xffU), true);
+		/* Remote packets don't use checksum */
+		if (packet->type != GDB_PACKET_BMD_REMOTE) {
+			/* Write checksum and flush the buffer */
+			const uint8_t checksum = gdb_packet_checksum(packet);
+			gdb_if_putchar(hex_digit(checksum >> 4U), false);
+			gdb_if_putchar(hex_digit(checksum & 0xffU), true);
+		}
 
 #if ENABLE_DEBUG == 1
 		/* Log packet for debugging */
@@ -325,20 +334,22 @@ void gdb_packet_send(const gdb_packet_s *const packet)
 #endif
 
 		/* Wait for ACK/NACK on standard packets */
-		if (packet->notification || gdb_get_ack(2000U))
+		if (packet->type != GDB_PACKET_STANDARD || gdb_get_ack(2000U))
 			break;
 	}
 }
 
-void gdb_putpacket(const char *preamble, size_t preamble_size, const char *data, size_t data_size, bool hex_data)
+void gdb_putpacket_generic(const gdb_packet_type_e type, const char *const preamble, size_t preamble_size,
+	const char *const data, size_t data_size, const bool hex_data)
 {
 	/*
 	 * Create a packet using the internal packet buffer
 	 * This destroys the previous packet in the buffer
 	 * any packets obtained from gdb_packet_receive() will be invalidated
 	 */
-	packet_buffer.notification = false;
-	packet_buffer.size = 0;
+	gdb_packet_s *const packet = gdb_packet_buffer();
+	packet->type = type;
+	packet->size = 0;
 
 	/*
 	 * Copy the preamble and data into the packet buffer, limited by the buffer size
@@ -350,8 +361,8 @@ void gdb_putpacket(const char *preamble, size_t preamble_size, const char *data,
 	 */
 	if (preamble != NULL && preamble_size > 0) {
 		preamble_size = MIN(preamble_size, GDB_PACKET_BUFFER_SIZE);
-		memcpy(packet_buffer.data, preamble, preamble_size);
-		packet_buffer.size = preamble_size;
+		memcpy(packet->data, preamble, preamble_size);
+		packet->size = preamble_size;
 	}
 
 	/* Add the data to the packet buffer and tranform it if needed */
@@ -359,17 +370,17 @@ void gdb_putpacket(const char *preamble, size_t preamble_size, const char *data,
 		if (hex_data) {
 			/* Hexify the data into the packet buffer, limited by the buffer size, hex data doubles in size */
 			data_size = MIN(data_size, (GDB_PACKET_BUFFER_SIZE - preamble_size) / 2U);
-			hexify(packet_buffer.data + packet_buffer.size, data, data_size);
-			packet_buffer.size += data_size * 2U;
+			hexify(packet->data + packet->size, data, data_size);
+			packet->size += data_size * 2U;
 		} else {
 			data_size = MIN(data_size, GDB_PACKET_BUFFER_SIZE - preamble_size);
-			memcpy(packet_buffer.data + preamble_size, data, data_size);
-			packet_buffer.size += data_size;
+			memcpy(packet->data + preamble_size, data, data_size);
+			packet->size += data_size;
 		}
 	}
 
 	/* Transmit the packet */
-	gdb_packet_send(&packet_buffer);
+	gdb_packet_send(packet);
 }
 
 void gdb_putpacket_f(const char *const fmt, ...)
@@ -379,7 +390,8 @@ void gdb_putpacket_f(const char *const fmt, ...)
 	 * This destroys the previous packet in the buffer
 	 * any packets obtained from gdb_packet_receive() will be invalidated
 	 */
-	packet_buffer.notification = false;
+	gdb_packet_s *const packet = gdb_packet_buffer();
+	packet->type = GDB_PACKET_STANDARD;
 
 	/*
 	 * Format the string directly into the packet buffer
@@ -389,27 +401,11 @@ void gdb_putpacket_f(const char *const fmt, ...)
 	 * but it will result in a packet larger than what we told GDB we could handle
 	 */
 	va_list ap;
-	packet_buffer.size = vsnprintf(packet_buffer.data, GDB_PACKET_BUFFER_SIZE + 1U, fmt, ap);
+	packet->size = vsnprintf(packet->data, GDB_PACKET_BUFFER_SIZE + 1U, fmt, ap);
 	va_end(ap);
 
 	/* Transmit the packet */
-	gdb_packet_send(&packet_buffer);
-}
-
-void gdb_put_notificationz(const char *const str)
-{
-	/*
-	 * Create a packet using the internal packet buffer
-	 * This destroys the previous packet in the buffer
-	 * any packets obtained from gdb_packet_receive() will be invalidated
-	 */
-	packet_buffer.notification = true;
-
-	packet_buffer.size = strnlen(str, GDB_PACKET_BUFFER_SIZE);
-	memcpy(packet_buffer.data, str, packet_buffer.size);
-
-	/* Transmit the packet */
-	gdb_packet_send(&packet_buffer);
+	gdb_packet_send(packet);
 }
 
 void gdb_out(const char *const str)
