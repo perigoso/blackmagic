@@ -444,9 +444,8 @@ void cl_init(bmda_cli_options_s *opt, int argc, char **argv)
 	}
 }
 
-static void display_target(size_t idx, target_s *target, void *context)
+static void display_target(size_t idx, target_s *target)
 {
-	(void)context;
 	const char attached = target->attached ? '*' : ' ';
 	const char *const core_name = target->core;
 	if (!strcmp(target->driver, "ARM Cortex-M"))
@@ -492,7 +491,11 @@ int cl_execute(bmda_cli_options_s *opt)
 		return -1;
 	}
 
-	const size_t num_targets = target_foreach(display_target, NULL);
+	size_t num_targets = 0;
+	target_foreach(target)
+	{
+		display_target(++num_targets, target);
+	}
 	if (opt->opt_target_dev > num_targets) {
 		DEBUG_ERROR("Given target number %" PRIu32 " not available max %zu\n", opt->opt_target_dev, num_targets);
 		return -1;

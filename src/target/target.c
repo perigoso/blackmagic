@@ -40,13 +40,15 @@
 #undef lseek
 #endif
 
-target_s *target_list = NULL;
-
 static void target_flash_dtor(void *flash_storage);
+static void target_ctor(void *target_storage);
+static void target_dtor(void *target_storage);
 
 static bool target_cmd_mass_erase(target_s *target, int argc, const char **argv);
 static bool target_cmd_range_erase(target_s *target, int argc, const char **argv);
 static bool target_cmd_redirect_output(target_s *target, int argc, const char **argv);
+
+llist_s target_list = llist_init_ctor_dtor(&target_ctor, &target_dtor);
 
 const command_s target_cmd_list[] = {
 	{"erase_mass", target_cmd_mass_erase, "Erase whole device Flash"},
@@ -61,21 +63,9 @@ static void target_flash_dtor(void *flash_storage)
 	free(flash->buf);
 }
 
-target_s *target_new(void)
+static void target_ctor(void *target_storage)
 {
-	target_s *target = calloc(1, sizeof(*target));
-	if (!target) { /* calloc failed: heap exhaustion */
-		DEBUG_ERROR("calloc: failed in %s\n", __func__);
-		return NULL;
-	}
-
-	if (target_list) {
-		target_s *last_target = target_list;
-		while (last_target->next)
-			last_target = last_target->next;
-		last_target->next = target;
-	} else
-		target_list = target;
+	target_s *const target = (target_s *)target_storage;
 
 	target->target_storage = NULL;
 
@@ -83,15 +73,45 @@ target_s *target_new(void)
 	target->flash_list = (llist_s)llist_init_dtor(target_flash_dtor);
 
 	target_add_commands(target, target_cmd_list, "Target");
-	return target;
 }
 
-size_t target_foreach(void (*callback)(size_t index, target_s *target, void *context), void *context)
+static void target_dtor(void *target_storage)
 {
-	size_t idx = 0;
-	for (target_s *target = target_list; target; target = target->next)
-		callback(++idx, target, context);
-	return idx;
+	target_s *const target = (target_s *)target_storage;
+
+	if (target->attached) {
+		TRY (EXCEPTION_ALL) {
+			target->detach(target);
+		}
+		CATCH () {
+		default:
+			DEBUG_ERROR("Exception caught while detaching from target: %s\n", exception_frame.msg);
+			target->attached = false;
+			break;
+		}
+	}
+	if (target->tc && target->tc->destroy_callback)
+		target->tc->destroy_callback(target->tc, target);
+	if (target->priv)
+		target->priv_free(target->priv);
+	while (target->commands) {
+		target_command_s *const tc = target->commands->next;
+		free(target->commands);
+		target->commands = tc;
+	}
+	free(target->target_storage);
+	llist_destroy(&target->ram_list);
+	llist_destroy(&target->flash_list);
+	while (target->bw_list) {
+		void *next = target->bw_list->next;
+		free(target->bw_list);
+		target->bw_list = next;
+	}
+}
+
+target_s *target_new(void)
+{
+	return llist_append_new(&target_list, sizeof(target_s));
 }
 
 void target_ram_map_free(target_s *target)
@@ -112,39 +132,7 @@ void target_mem_map_free(target_s *target)
 
 void target_list_free(void)
 {
-	target_s *volatile target = target_list;
-	while (target) {
-		target_s *next_target = target->next;
-		TRY (EXCEPTION_ALL) {
-			if (target->attached)
-				target->detach(target);
-		}
-		CATCH () {
-		default:
-			DEBUG_ERROR("Exception caught while detaching from target: %s\n", exception_frame.msg);
-			target->attached = false;
-			break;
-		}
-		if (target->tc && target->tc->destroy_callback)
-			target->tc->destroy_callback(target->tc, target);
-		if (target->priv)
-			target->priv_free(target->priv);
-		while (target->commands) {
-			target_command_s *const tc = target->commands->next;
-			free(target->commands);
-			target->commands = tc;
-		}
-		free(target->target_storage);
-		target_mem_map_free(target);
-		while (target->bw_list) {
-			void *next = target->bw_list->next;
-			free(target->bw_list);
-			target->bw_list = next;
-		}
-		free(target);
-		target = next_target;
-	}
-	target_list = NULL;
+	llist_destroy(&target_list);
 }
 
 void target_add_commands(target_s *target, const command_s *cmds, const char *name)
@@ -170,8 +158,8 @@ void target_add_commands(target_s *target, const command_s *cmds, const char *na
 
 target_s *target_attach_n(const size_t n, target_controller_s *controller)
 {
-	target_s *target = target_list;
-	for (size_t idx = 1; target; target = target->next, ++idx) {
+	target_s *target = llist_begin(&target_list);
+	for (size_t idx = 1; target; target = llist_next(target), ++idx) {
 		if (idx == n)
 			return target_attach(target, controller);
 	}

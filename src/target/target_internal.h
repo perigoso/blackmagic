@@ -32,8 +32,6 @@
 #define TOPT_NON_HALTING_MEM_IO     (1U << 30U) /* Target does not need halting for memory I/O */
 #define TOPT_IN_SEMIHOSTING_SYSCALL (1U << 31U) /* Target is currently in a semihosting syscall */
 
-extern target_s *target_list;
-
 typedef enum flash_operation {
 	FLASH_OPERATION_NONE,
 	FLASH_OPERATION_ERASE,
@@ -182,8 +180,6 @@ struct target {
 	target_command_s *commands;
 	bool stdout_redirected;
 
-	target_s *next;
-
 	void *priv;
 	priv_free_func priv_free;
 
@@ -195,6 +191,10 @@ struct target {
 	 */
 	uint16_t part_id;
 };
+
+extern llist_s target_list;
+
+#define target_foreach(var) llist_for_each(target_s, var, &target_list)
 
 void target_print_progress(platform_timeout_s *timeout);
 void target_ram_map_free(target_s *target);

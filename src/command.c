@@ -467,9 +467,8 @@ bool cmd_frequency(target_s *target, int argc, const char **argv)
 	return true;
 }
 
-static void display_target(size_t idx, target_s *target, void *context)
+static void display_target(size_t idx, target_s *target)
 {
-	(void)context;
 	const char attached = target->attached ? '*' : ' ';
 	const char *const core_name = target->core;
 	if (!strcmp(target->driver, "ARM Cortex-M"))
@@ -479,14 +478,19 @@ static void display_target(size_t idx, target_s *target, void *context)
 		gdb_outf("%2u %3c  %s %s\n", (unsigned)idx, attached, target->driver, core_name ? core_name : "");
 }
 
-bool cmd_targets(target_s *target, int argc, const char **argv)
+bool cmd_targets(target_s *unused_target, int argc, const char **argv)
 {
-	(void)target;
+	(void)unused_target;
 	(void)argc;
 	(void)argv;
 	gdb_out("Available Targets:\n");
 	gdb_out("No. Att Driver\n");
-	if (!target_foreach(display_target, NULL)) {
+	size_t idx = 0;
+	target_foreach(target)
+	{
+		display_target(++idx, target);
+	}
+	if (idx == 0) {
 		gdb_out("No usable targets found.\n");
 		return false;
 	}

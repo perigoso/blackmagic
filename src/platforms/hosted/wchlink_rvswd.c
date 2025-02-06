@@ -49,5 +49,5 @@ bool wchlink_rvswd_scan(void)
 	/* deffer to WCH-Link riscv_dtm_handler */
 	wchlink_riscv_dtm_handler();
 
-	return target_list != NULL;
+	return !llist_empty(&target_list);
 }

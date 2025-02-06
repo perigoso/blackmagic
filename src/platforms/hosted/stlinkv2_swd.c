@@ -50,5 +50,5 @@ bool stlink_swd_scan(void)
 	adiv5_dp_error(dp);
 	adiv5_dp_init(dp);
 
-	return target_list != NULL;
+	return !llist_empty(&target_list);
 }

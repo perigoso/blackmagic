@@ -501,7 +501,8 @@ void adi_ap_resume_cores(adiv5_access_port_s *const ap)
 	 * If we're not in connect-under-reset mode, and now that we're done with this AP's
 	 * ROM tables, look for any created targets and resume the core associated with it.
 	 */
-	for (target_s *target = target_list; target; target = target->next) {
+	target_foreach(target)
+	{
 		if (!connect_assert_nrst && target->priv_free == cortex_priv_free) {
 			adiv5_access_port_s *target_ap = cortex_ap(target);
 			if (target_ap == ap)
