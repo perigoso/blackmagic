@@ -87,13 +87,10 @@ typedef struct command {
 	const char *help;
 } command_s;
 
-typedef struct target_command target_command_s;
-
-struct target_command {
+typedef struct target_commands {
 	const char *specific_name;
 	const command_s *cmds;
-	target_command_s *next;
-};
+} target_commands_s;
 
 typedef struct breakwatch {
 #if CONFIG_POINTER_SIZE == 8
@@ -174,7 +171,7 @@ struct target {
 	const char *core;
 	char cmdline[MAX_CMDLINE];
 	target_addr_t heapinfo[4];
-	target_command_s *commands;
+	llist_s cmd_list;
 	bool stdout_redirected;
 
 	void *priv;

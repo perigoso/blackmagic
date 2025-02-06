@@ -96,15 +96,11 @@ static void target_dtor(void *target_storage)
 		target->tc->destroy_callback(target->tc, target);
 	if (target->priv)
 		target->priv_free(target->priv);
-	while (target->commands) {
-		target_command_s *const tc = target->commands->next;
-		free(target->commands);
-		target->commands = tc;
-	}
 	free(target->target_storage);
 	llist_destroy(&target->bw_list);
 	llist_destroy(&target->ram_list);
 	llist_destroy(&target->flash_list);
+	llist_destroy(&target->cmd_list);
 }
 
 target_s *target_new(void)
@@ -135,23 +131,13 @@ void target_list_free(void)
 
 void target_add_commands(target_s *target, const command_s *cmds, const char *name)
 {
-	target_command_s *command = malloc(sizeof(*command));
-	if (!command) { /* malloc failed: heap exhaustion */
+	target_commands_s *const cmd = llist_append_new(&target->cmd_list, sizeof(target_commands_s));
+	if (cmd == NULL) { /* malloc failed: heap exhaustion */
 		DEBUG_ERROR("malloc: failed in %s\n", __func__);
 		return;
 	}
-
-	if (target->commands) {
-		target_command_s *tail;
-		for (tail = target->commands; tail->next; tail = tail->next)
-			continue;
-		tail->next = command;
-	} else
-		target->commands = command;
-
-	command->specific_name = name;
-	command->cmds = cmds;
-	command->next = NULL;
+	cmd->specific_name = name;
+	cmd->cmds = cmds;
 }
 
 target_s *target_attach_n(const size_t n, target_controller_s *controller)
@@ -596,21 +582,21 @@ bool target_mem32_write8(target_s *target, target_addr32_t addr, uint8_t value)
 
 void target_command_help(target_s *target)
 {
-	for (const target_command_s *target_commands = target->commands; target_commands;
-		 target_commands = target_commands->next) {
-		tc_printf(target, "%s specific commands:\n", target_commands->specific_name);
-		for (const command_s *command = target_commands->cmds; command->cmd; command++)
-			tc_printf(target, "\t%s -- %s\n", command->cmd, command->help);
+	llist_for_each(target_commands_s, target_cmds, &target->cmd_list)
+	{
+		tc_printf(target, "%s specific commands:\n", target_cmds->specific_name);
+		for (const command_s *cmd = target_cmds->cmds; cmd->cmd; cmd++)
+			tc_printf(target, "\t%s -- %s\n", cmd->cmd, cmd->help);
 	}
 }
 
 int target_command(target_s *target, int argc, const char *argv[])
 {
-	for (const target_command_s *target_commands = target->commands; target_commands;
-		 target_commands = target_commands->next) {
-		for (const command_s *command = target_commands->cmds; command->cmd; command++) {
-			if (!strncmp(argv[0], command->cmd, strlen(argv[0])))
-				return command->handler(target, argc, argv) ? 0 : 1;
+	llist_for_each(target_commands_s, target_cmds, &target->cmd_list)
+	{
+		for (const command_s *cmd = target_cmds->cmds; cmd->cmd; cmd++) {
+			if (!strncmp(argv[0], cmd->cmd, strlen(argv[0])))
+				return cmd->handler(target, argc, argv) ? 0 : 1;
 		}
 	}
 	return -1;
