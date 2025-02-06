@@ -221,7 +221,7 @@ static uint32_t stm32lx_nvm_option_size(const target_s *const target)
 
 static void stm32l_add_flash(target_s *const target, const uint32_t addr, const size_t length, const size_t erasesize)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -233,12 +233,11 @@ static void stm32l_add_flash(target_s *const target, const uint32_t addr, const 
 	flash->erase = stm32lx_flash_erase;
 	flash->write = stm32lx_flash_write;
 	flash->writesize = erasesize >> 1U;
-	target_add_flash(target, flash);
 }
 
 static void stm32l_add_eeprom(target_s *const target, const uint32_t addr, const size_t length)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -249,7 +248,6 @@ static void stm32l_add_eeprom(target_s *const target, const uint32_t addr, const
 	flash->blocksize = 4;
 	flash->erase = stm32lx_eeprom_erase;
 	flash->write = stm32lx_eeprom_write;
-	target_add_flash(target, flash);
 }
 
 static void stm32l0_configure_dbgmcu(target_s *const target)

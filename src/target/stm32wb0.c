@@ -86,7 +86,7 @@ static bool stm32wb0_mass_erase(target_s *target, platform_timeout_s *print_prog
 
 static void stm32wb0_add_flash(target_s *const target, const size_t length)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -99,7 +99,6 @@ static void stm32wb0_add_flash(target_s *const target, const size_t length)
 	flash->erase = stm32wb0_flash_erase;
 	flash->write = stm32wb0_flash_write;
 	flash->erased = 0xffU;
-	target_add_flash(target, flash);
 }
 
 uint32_t stm32wb0_ram_size(const uint32_t signature)

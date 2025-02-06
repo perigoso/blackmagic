@@ -143,14 +143,13 @@ const command_s msp432_cmd_list[] = {
 
 static void msp432_add_flash(target_s *t, uint32_t addr, size_t length, target_addr_t prot_reg)
 {
-	msp432_flash_s *mf = calloc(1, sizeof(*mf));
-	target_flash_s *f;
+	msp432_flash_s *const mf = target_add_flash(t, msp432_flash_s);
 	if (!mf) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
 	}
 
-	f = &mf->f;
+	target_flash_s *const f = &mf->f;
 	f->start = addr;
 	f->length = length;
 	f->blocksize = SECTOR_SIZE;
@@ -158,7 +157,7 @@ static void msp432_add_flash(target_s *t, uint32_t addr, size_t length, target_a
 	f->write = msp432_flash_write;
 	f->writesize = SRAM_WRITE_BUF_SIZE;
 	f->erased = 0xff;
-	target_add_flash(t, f);
+
 	/* Initialize ROM call pointers. Silicon rev B is not supported */
 	const uint32_t flash_ctrl_base = target_mem32_read32(t, ROM_TABLE_BASE + OFFS_FLASH_CTRL_TABLE);
 	mf->flash_erase_sector_fn = target_mem32_read32(t, flash_ctrl_base + OFFS_FLASH_CTRL_ERASE_SECTOR);

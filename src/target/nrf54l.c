@@ -89,7 +89,7 @@ static bool rram_mass_erase(target_s *const target, platform_timeout_s *const pr
 
 static void add_rram(target_s *target, uint32_t addr, size_t length, uint32_t writesize)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -104,7 +104,6 @@ static void add_rram(target_s *target, uint32_t addr, size_t length, uint32_t wr
 	flash->prepare = rram_prepare;
 	flash->done = rram_done;
 	flash->erased = 0xffU;
-	target_add_flash(target, flash);
 }
 
 bool nrf54l_probe(target_s *target)

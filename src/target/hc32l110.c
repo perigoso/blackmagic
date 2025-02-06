@@ -82,7 +82,7 @@ static bool hc32l110_mass_erase(target_s *target, platform_timeout_s *print_prog
 
 static void hc32l110_add_flash(target_s *target, const uint32_t flash_size)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -97,7 +97,6 @@ static void hc32l110_add_flash(target_s *target, const uint32_t flash_size)
 	flash->write = hc32l110_flash_write;
 	flash->prepare = hc32l110_flash_prepare;
 	flash->done = hc32l110_flash_done;
-	target_add_flash(target, flash);
 }
 
 bool hc32l110_probe(target_s *target)

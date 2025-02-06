@@ -85,7 +85,7 @@ static bool lpc_flash_write(target_flash_s *tf, target_addr_t dest, const void *
 lpc_flash_s *lpc_add_flash(
 	target_s *const target, const target_addr_t addr, const size_t length, const size_t write_size)
 {
-	lpc_flash_s *const lpc_flash = calloc(1, sizeof(*lpc_flash));
+	lpc_flash_s *const lpc_flash = target_add_flash(target, lpc_flash_s);
 	if (!lpc_flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return NULL;
@@ -98,7 +98,7 @@ lpc_flash_s *lpc_add_flash(
 	flash->write = lpc_flash_write;
 	flash->erased = 0xff;
 	flash->writesize = write_size;
-	target_add_flash(target, flash);
+
 	return lpc_flash;
 }
 

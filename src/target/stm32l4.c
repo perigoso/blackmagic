@@ -596,7 +596,7 @@ static inline void stm32l4_flash_write32(target_s *const target, const stm32l4_f
 static void stm32l4_add_flash(target_s *const target, const uint32_t addr, const size_t length, const size_t blocksize,
 	const uint32_t bank1_start)
 {
-	stm32l4_flash_s *flash = calloc(1, sizeof(*flash));
+	stm32l4_flash_s *const flash = target_add_flash(target, stm32l4_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -611,7 +611,6 @@ static void stm32l4_add_flash(target_s *const target, const uint32_t addr, const
 	target_flash->writesize = 2048;
 	target_flash->erased = 0xffU;
 	flash->bank1_start = bank1_start;
-	target_add_flash(target, target_flash);
 }
 
 /* For flash programming, L5 needs to be in VOS 0 or 1 while reset set 2 (or even 3?) */

@@ -308,7 +308,7 @@ static bool renesas_rv40_flash_write(target_flash_s *flash, target_addr_t dest, 
 
 static void renesas_add_rv40_flash(target_s *const target, const target_addr_t addr, const size_t length)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -331,8 +331,6 @@ static void renesas_add_rv40_flash(target_s *const target, const target_addr_t a
 		flash->blocksize = RV40_DF_BLOCK_SIZE;
 		flash->writesize = RV40_DF_WRITE_SIZE;
 	}
-
-	target_add_flash(target, flash);
 }
 
 static void renesas_add_flash(target_s *const target, const target_addr_t addr, const size_t length)

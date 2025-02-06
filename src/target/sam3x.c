@@ -193,13 +193,13 @@ typedef struct sam_priv {
 
 static void sam3_add_flash(target_s *t, uint32_t eefc_base, uint32_t addr, size_t length)
 {
-	sam_flash_s *sf = calloc(1, sizeof(*sf));
+	sam_flash_s *const sf = target_add_flash(t, sam_flash_s);
 	if (!sf) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
 	}
 
-	target_flash_s *f = &sf->f;
+	target_flash_s *const f = &sf->f;
 	f->start = addr;
 	f->length = length;
 	f->blocksize = SAM_SMALL_PAGE_SIZE;
@@ -208,18 +208,17 @@ static void sam3_add_flash(target_s *t, uint32_t eefc_base, uint32_t addr, size_
 	f->writesize = SAM_SMALL_PAGE_SIZE;
 	sf->eefc_base = eefc_base;
 	sf->write_cmd = EEFC_FCR_FCMD_EWP;
-	target_add_flash(t, f);
 }
 
 static void sam_add_flash(target_s *t, uint32_t eefc_base, uint32_t addr, size_t length)
 {
-	sam_flash_s *sf = calloc(1, sizeof(*sf));
+	sam_flash_s *const sf = target_add_flash(t, sam_flash_s);
 	if (!sf) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
 	}
 
-	target_flash_s *f = &sf->f;
+	target_flash_s *const f = &sf->f;
 	f->start = addr;
 	f->length = length;
 	f->blocksize = SAM_LARGE_PAGE_SIZE * 8U;
@@ -228,7 +227,6 @@ static void sam_add_flash(target_s *t, uint32_t eefc_base, uint32_t addr, size_t
 	f->writesize = SAM_LARGE_PAGE_SIZE;
 	sf->eefc_base = eefc_base;
 	sf->write_cmd = EEFC_FCR_FCMD_WP;
-	target_add_flash(t, f);
 }
 
 static void samx7x_add_ram(target_s *t, uint32_t tcm_config, uint32_t ram_size)

@@ -483,7 +483,7 @@ samd_descr_s samd_parse_device_id(uint32_t did)
 
 static void samd_add_flash(target_s *t, uint32_t addr, size_t length)
 {
-	target_flash_s *f = calloc(1, sizeof(*f));
+	target_flash_s *const f = target_add_flash(t, target_flash_s);
 	if (!f) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -495,7 +495,6 @@ static void samd_add_flash(target_s *t, uint32_t addr, size_t length)
 	f->erase = samd_flash_erase;
 	f->write = samd_flash_write;
 	f->writesize = SAMD_PAGE_SIZE;
-	target_add_flash(t, f);
 }
 
 #define SAMD_VARIANT_STR_LENGTH 60U

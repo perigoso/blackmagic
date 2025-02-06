@@ -646,7 +646,9 @@ static uint32_t rp_get_flash_length(target_s *const target)
 
 static bool rp_cmd_erase_sector(target_s *target, int argc, const char **argv)
 {
-	uint32_t start = target->flash->start;
+	target_flash_s *const flash = llist_begin(&target->flash_list);
+
+	uint32_t start = flash->start;
 	uint32_t length;
 
 	if (argc == 3) {
@@ -656,8 +658,6 @@ static bool rp_cmd_erase_sector(target_s *target, int argc, const char **argv)
 		length = strtoul(argv[1], NULL, 0);
 	else
 		return false;
-
-	target_flash_s *const flash = target->flash;
 
 	bool result = true; /* catch false returns with &= */
 	result &= rp_flash_prepare(target);

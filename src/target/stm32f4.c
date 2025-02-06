@@ -159,13 +159,13 @@ static void stm32f4_add_flash(target_s *const target, const uint32_t addr, const
 	if (length == 0)
 		return;
 
-	stm32f4_flash_s *flash = calloc(1, sizeof(*flash));
+	stm32f4_flash_s *const flash = target_add_flash(target, stm32f4_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
 	}
 
-	target_flash_s *target_flash = &flash->flash;
+	target_flash_s *const target_flash = &flash->flash;
 	target_flash->start = addr;
 	target_flash->length = length;
 	target_flash->blocksize = blocksize;
@@ -175,7 +175,6 @@ static void stm32f4_add_flash(target_s *const target, const uint32_t addr, const
 	target_flash->erased = 0xffU;
 	flash->base_sector = base_sector;
 	flash->bank_split = split;
-	target_add_flash(target, target_flash);
 }
 
 static char *stm32f4_get_chip_name(const uint32_t device_id)
@@ -601,7 +600,7 @@ static bool stm32f4_flash_write(target_flash_s *flash, target_addr_t dest, const
 static bool stm32f4_mass_erase(target_s *const target, platform_timeout_s *const print_progess)
 {
 	/* XXX: Is it correct to grab the most recently added Flash region here? What is this really trying to do? */
-	stm32f4_flash_s *stm32f4_flash = (stm32f4_flash_s *)target->flash;
+	stm32f4_flash_s *const stm32f4_flash = llist_begin(&target->flash_list);
 	stm32f4_flash_unlock(target);
 
 	/* Flash mass erase start instruction */

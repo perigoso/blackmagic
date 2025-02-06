@@ -185,14 +185,14 @@ static bool mspm0_dump_bcr_config(target_s *const target, const int argc, const 
 
 static void mspm0_add_flash(target_s *const target, const uint32_t base, const size_t length, const uint32_t banks)
 {
-	mspm0_flash_s *const flash = calloc(1, sizeof(*flash));
+	mspm0_flash_s *const flash = target_add_flash(target, mspm0_flash_s);
 	if (flash == NULL) {
 		DEBUG_WARN("%s: calloc failed for %" PRIu32 " bytes\n", __func__, (uint32_t)length);
 		return;
 	}
 
 	flash->banks = banks;
-	target_flash_s *target_flash = &flash->target_flash;
+	target_flash_s *const target_flash = &flash->target_flash;
 	target_flash->start = base;
 	target_flash->length = length;
 	target_flash->blocksize = MSPM0_FLASH_SECTOR_SZ;
@@ -200,7 +200,6 @@ static void mspm0_add_flash(target_s *const target, const uint32_t base, const s
 	target_flash->erase = mspm0_flash_erase;
 	target_flash->write = mspm0_flash_write;
 	target_flash->erased = 0xffU;
-	target_add_flash(target, target_flash);
 }
 
 bool mspm0_probe(target_s *const target)
@@ -342,8 +341,8 @@ static bool mspm0_flash_write(
 static bool mspm0_mass_erase(target_s *target, platform_timeout_s *print_progess)
 {
 	bool success = true;
-	for (mspm0_flash_s *flash = (mspm0_flash_s *)target->flash; flash && success;
-		 flash = (mspm0_flash_s *)flash->target_flash.next) {
+	llist_for_each(mspm0_flash_s, flash, &target->flash_list)
+	{
 		/* Assume banks are of same size */
 		uint32_t bank_size = flash->target_flash.length / flash->banks;
 		for (uint32_t bank = 0U; bank < flash->banks; ++bank) {
@@ -372,6 +371,8 @@ static bool mspm0_mass_erase(target_s *target, platform_timeout_s *print_progess
 					__func__, status, bank_address, (uint32_t)bank_size);
 
 			success &= (status & MSPM0_FLASHCTL_STAT_CMDPASS) == MSPM0_FLASHCTL_STAT_CMDPASS;
+			if (!success)
+				break;
 		}
 	}
 

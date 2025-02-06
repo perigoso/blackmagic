@@ -105,7 +105,7 @@ const command_s nrf51_read_cmd_list[] = {
 
 static void nrf51_add_flash(target_s *t, uint32_t addr, size_t length, size_t erasesize)
 {
-	target_flash_s *f = calloc(1, sizeof(*f));
+	target_flash_s *const f = target_add_flash(t, target_flash_s);
 	if (!f) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -121,7 +121,6 @@ static void nrf51_add_flash(target_s *t, uint32_t addr, size_t length, size_t er
 	f->prepare = nrf51_flash_prepare;
 	f->done = nrf51_flash_done;
 	f->erased = 0xff;
-	target_add_flash(t, f);
 }
 
 bool nrf51_probe(target_s *t)

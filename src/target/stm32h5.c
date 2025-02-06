@@ -152,20 +152,20 @@ static bool stm32h5_mass_erase(target_s *target, platform_timeout_s *print_proge
 static void stm32h5_add_flash(
 	target_s *const target, const uint32_t base_addr, const size_t length, const uint32_t bank_and_sector_count)
 {
-	stm32h5_flash_s *flash = calloc(1, sizeof(*flash));
+	stm32h5_flash_s *const flash = target_add_flash(target, stm32h5_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
 	}
 
-	target_flash_s *target_flash = &flash->target_flash;
+	target_flash_s *const target_flash = &flash->target_flash;
 	target_flash->start = base_addr;
 	target_flash->length = length;
 	target_flash->blocksize = STM32H5_FLASH_SECTOR_SIZE;
 	target_flash->erase = stm32h5_flash_erase;
 	target_flash->write = stm32h5_flash_write;
 	target_flash->erased = 0xffU;
-	target_add_flash(target, target_flash);
+
 	flash->bank_and_sector_count = bank_and_sector_count;
 }
 

@@ -44,7 +44,8 @@ static bool flash_done(target_flash_s *flash);
 
 target_flash_s *target_flash_for_addr(target_s *target, uint32_t addr)
 {
-	for (target_flash_s *flash = target->flash; flash; flash = flash->next) {
+	llist_for_each(target_flash_s, flash, &target->flash_list)
+	{
 		if (flash->start <= addr && addr < flash->start + flash->length)
 			return flash;
 	}
@@ -218,7 +219,8 @@ bool target_flash_mass_erase(target_s *const target)
 		DEBUG_WARN("No specialized target mass erase available, erasing all flash\n");
 
 		/* Erase all target flash */
-		for (target_flash_s *flash = target->flash; flash; flash = flash->next) {
+		llist_for_each(target_flash_s, flash, &target->flash_list)
+		{
 			/* If the flash has a mass erase function, use it */
 			const bool can_use_mass_erase = flash->mass_erase != NULL;
 
@@ -342,7 +344,8 @@ bool target_flash_write(target_s *target, target_addr_t dest, const void *src, s
 	bool result = true; /* Catch false returns with &= */
 	target_flash_s *active_flash = NULL;
 
-	for (target_flash_s *flash = target->flash; flash; flash = flash->next) {
+	llist_for_each(target_flash_s, flash, &target->flash_list)
+	{
 		if (flash->start <= dest && dest < flash->start + flash->length)
 			active_flash = flash;
 		else if (flash->buf) {
@@ -393,7 +396,8 @@ bool target_flash_complete(target_s *target)
 		return false;
 
 	bool result = true; /* Catch false returns with &= */
-	for (target_flash_s *flash = target->flash; flash; flash = flash->next) {
+	llist_for_each(target_flash_s, flash, &target->flash_list)
+	{
 		result &= flash_buffered_flush(flash);
 		result &= flash_done(flash);
 	}

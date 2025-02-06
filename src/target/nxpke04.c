@@ -135,7 +135,7 @@ static bool ke04_cmd_sector_erase(target_s *t, int argc, const char **argv)
 	if (argc < 2)
 		tc_printf(t, "usage: monitor sector_erase <addr>\n");
 
-	target_flash_s *f = t->flash;
+	target_flash_s *const f = llist_begin(&t->flash_list);
 	char *eos = NULL;
 	uint32_t addr = strtoul(argv[1], &eos, 0);
 
@@ -219,7 +219,7 @@ bool ke04_probe(target_s *t)
 	target_add_ram32(t, RAM_BASE_ADDR, ramsize);           /* Higher RAM */
 
 	/* Add flash, all KE04 have same write and erase size */
-	target_flash_s *f = calloc(1, sizeof(*f));
+	target_flash_s *const f = target_add_flash(t, target_flash_s);
 	if (!f) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return false;
@@ -232,7 +232,6 @@ bool ke04_probe(target_s *t)
 	f->write = ke04_flash_write;
 	f->done = ke04_flash_done;
 	f->erased = 0xffU;
-	target_add_flash(t, f);
 
 	/* Add target specific commands */
 	target_add_commands(t, ke_cmd_list, t->driver);
@@ -247,7 +246,7 @@ static bool ke04_mass_erase(target_s *const t, platform_timeout_s *const print_p
 	/* Erase and verify the whole flash */
 	ke04_command(t, CMD_ERASE_ALL_BLOCKS, 0, NULL);
 	/* Adjust security byte if needed */
-	ke04_flash_done(t->flash);
+	ke04_flash_done(llist_begin(&t->flash_list));
 	return true;
 }
 

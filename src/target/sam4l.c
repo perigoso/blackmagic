@@ -187,7 +187,7 @@ static const uint32_t sam4l_nvp_size[16] = {
  */
 static void sam4l_add_flash(target_s *t, uint32_t addr, size_t length)
 {
-	target_flash_s *f = calloc(1, sizeof(*f));
+	target_flash_s *const f = target_add_flash(t, target_flash_s);
 	if (!f) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -200,8 +200,6 @@ static void sam4l_add_flash(target_s *t, uint32_t addr, size_t length)
 	f->write = sam4l_flash_write;
 	f->writesize = SAM4L_PAGE_SIZE;
 	f->erased = 0xff;
-	/* Add it into the target structures flash chain */
-	target_add_flash(t, f);
 }
 
 /*

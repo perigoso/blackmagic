@@ -74,7 +74,6 @@ struct target_flash {
 	target_addr32_t buf_addr_base;    /* Address of block this buffer is for */
 	target_addr32_t buf_addr_low;     /* Address of lowest byte written */
 	target_addr32_t buf_addr_high;    /* Address of highest byte written */
-	target_flash_s *next;             /* Next flash in list */
 };
 
 /*
@@ -172,7 +171,7 @@ struct target {
 	bool flash_mode;
 
 	llist_s ram_list;
-	target_flash_s *flash;
+	llist_s flash_list;
 
 	/* Other stuff */
 	const char *driver;
@@ -204,7 +203,8 @@ void target_mem_map_free(target_s *target);
 void target_add_commands(target_s *target, const command_s *cmds, const char *name);
 void target_add_ram32(target_s *target, target_addr32_t start, uint32_t len);
 void target_add_ram64(target_s *target, target_addr64_t start, uint64_t len);
-void target_add_flash(target_s *target, target_flash_s *flash);
+void *target_add_flash_typesize(target_s *target, size_t typesize);
+#define target_add_flash(target, type) (type *)target_add_flash_typesize(target, sizeof(type))
 
 /* No-op stub for enter flash mode */
 bool target_enter_flash_mode_stub(target_s *target);

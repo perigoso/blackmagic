@@ -127,7 +127,7 @@ bool puya_probe(target_s *target)
 	}
 
 	target_add_ram32(target, PUYA_RAM_START, ram_size);
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return false;
@@ -141,7 +141,6 @@ bool puya_probe(target_s *target)
 	flash->prepare = puya_flash_prepare;
 	flash->done = puya_flash_done;
 	flash->erased = 0xffU;
-	target_add_flash(target, flash);
 
 	return true;
 }

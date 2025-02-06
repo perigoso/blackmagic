@@ -109,7 +109,7 @@ static inline uint8_t bmp_spi_read_status(target_s *const target, const spi_flas
 spi_flash_s *bmp_spi_add_flash(target_s *const target, const target_addr_t begin, const size_t length,
 	const spi_read_func spi_read, const spi_write_func spi_write, const spi_run_command_func spi_run_command)
 {
-	spi_flash_s *spi_flash = calloc(1, sizeof(*spi_flash));
+	spi_flash_s *const spi_flash = target_add_flash(target, spi_flash_s);
 	if (!spi_flash) { /* calloc failed: heap exhaustion */
 		DEBUG_WARN("calloc: failed in %s\n", __func__);
 		return NULL;
@@ -134,7 +134,6 @@ spi_flash_s *bmp_spi_add_flash(target_s *const target, const target_addr_t begin
 	flash->erase = bmp_spi_flash_erase;
 	flash->mass_erase = bmp_spi_mass_erase;
 	flash->erased = 0xffU;
-	target_add_flash(target, flash);
 
 	spi_flash->page_size = spi_parameters.page_size;
 	spi_flash->sector_erase_opcode = spi_parameters.sector_erase_opcode;

@@ -517,24 +517,14 @@ int cl_execute(bmda_cli_options_s *opt)
 	/* List each defined Flash region */
 	uint32_t lowest_flash_start = 0xffffffffU;
 	size_t lowest_flash_size = 0;
+	llist_for_each(target_flash_s, flash, &target->ram_list)
+	{
+		DEBUG_INFO("Flash Start: 0x%08" PRIx32 " length = 0x%zx blocksize 0x%zx\n", flash->start, flash->length,
+			flash->blocksize);
 
-	size_t flash_regions = 0;
-	for (target_flash_s *flash = target->flash; flash; flash = flash->next) {
-		++flash_regions;
 		if (flash->start < lowest_flash_start) {
 			lowest_flash_start = flash->start;
 			lowest_flash_size = flash->length;
-		}
-	}
-
-	for (size_t region = 0; region < flash_regions; ++region) {
-		target_flash_s *flash = target->flash;
-		for (size_t i = flash_regions - 1U; flash; flash = flash->next, --i) {
-			if (region == i) {
-				DEBUG_INFO("Flash Start: 0x%08" PRIx32 " length = 0x%zx blocksize 0x%zx\n", flash->start, flash->length,
-					flash->blocksize);
-				break;
-			}
 		}
 	}
 

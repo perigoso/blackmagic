@@ -242,6 +242,7 @@ typedef struct lpc43xx_partid {
 } lpc43xx_partid_s;
 
 typedef struct lpc43xx_spi_flash {
+	/* FIXME: AAAAAAHHHHHHHHH WTF?! *runs* */
 	spi_flash_s flash_low;
 	spi_flash_s *flash_high;
 	uint32_t page_size;
@@ -255,7 +256,6 @@ typedef struct lpc43xx_priv {
 } lpc43xx_priv_s;
 
 typedef struct lpc43x0_priv {
-	lpc43xx_spi_flash_s *flash;
 	lpc43x0_flash_interface_e interface;
 	uint32_t boot_address;
 	uint32_t spifi_memory_command;
@@ -392,27 +392,19 @@ static void lpc43xx_detect(target_s *const t, const lpc43xx_partid_s part_id)
 
 static void lpc43x0_add_spi_flash(target_s *const target, const size_t length)
 {
-	lpc43xx_spi_flash_s *const flash = calloc(1, sizeof(*flash));
+	lpc43xx_spi_flash_s *const flash = target_add_flash(target, lpc43xx_spi_flash_s);
 	if (!flash) {
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
 	}
-	lpc43x0_priv_s *const priv = (lpc43x0_priv_s *)target->target_storage;
-	priv->flash = flash;
 
 	/* Add the high region first so it appears second in the map */
 	flash->flash_high = bmp_spi_add_flash(target, LPC43x0_SPI_FLASH_HIGH_BASE, MIN(length, LPC43x0_SPI_FLASH_HIGH_SIZE),
 		lpc43x0_spi_read, lpc43x0_spi_write, lpc43x0_spi_run_command);
 
-	/*
-	 * Then add the low region - the reason for this is that
-	 * target_add_flash inserts new entries to the beginning of the
-	 * Flash linked-list in the target structure, so this becomes t->flash.
-	 */
+	/* Initialize the low region from the high region */
 	memcpy(&flash->flash_low, flash->flash_high, sizeof(spi_flash_s));
-	target_flash_s *const flash_low = &flash->flash_low.flash;
-	flash_low->start = LPC43x0_SPI_FLASH_LOW_BASE;
-	target_add_flash(target, flash_low);
+	flash->flash_low.flash.start = LPC43x0_SPI_FLASH_LOW_BASE;
 }
 
 static void lpc43x0_detect(target_s *const t, const lpc43xx_partid_s part_id)
@@ -679,13 +671,6 @@ static bool lpc43x0_attach(target_s *const target)
 
 static void lpc43x0_detach(target_s *const target)
 {
-	lpc43x0_priv_s *const priv = (lpc43x0_priv_s *)target->target_storage;
-	if (priv->flash) {
-		free(priv->flash->flash_high);
-		free(priv->flash);
-		priv->flash = NULL;
-		target->flash = NULL;
-	}
 	cortexm_detach(target);
 }
 
@@ -1002,14 +987,14 @@ static bool lpc43xx_iap_flash_erase(target_flash_s *f, const target_addr_t addr,
 static bool lpc43xx_iap_mass_erase(target_s *const t, platform_timeout_s *const print_progess)
 {
 	lpc43xx_priv_s *const priv = (lpc43xx_priv_s *)t->target_storage;
+	lpc_flash_s *const flash = llist_begin(&t->flash_list);
 
-	lpc43xx_iap_init(t->flash);
+	lpc43xx_iap_init((target_flash_s *)flash);
 
 	/* FIXME: since this is looking like bank mass erases, maybe this should be in flash->mass_erase */
 	for (size_t bank = 0; bank < priv->flash_banks; ++bank) {
-		lpc_flash_s *const f = (lpc_flash_s *)t->flash;
-		if (lpc_iap_call(f, NULL, IAP_CMD_PREPARE, 0, FLASH_NUM_SECTOR - 1U, bank) ||
-			lpc_iap_call(f, NULL, IAP_CMD_ERASE, 0, FLASH_NUM_SECTOR - 1U, CPU_CLK_KHZ, bank))
+		if (lpc_iap_call(flash, NULL, IAP_CMD_PREPARE, 0, FLASH_NUM_SECTOR - 1U, bank) ||
+			lpc_iap_call(flash, NULL, IAP_CMD_ERASE, 0, FLASH_NUM_SECTOR - 1U, CPU_CLK_KHZ, bank))
 			return false;
 		target_print_progress(print_progess);
 	}
@@ -1048,11 +1033,11 @@ static bool lpc43xx_cmd_mkboot(target_s *t, int argc, const char **argv)
 		return false;
 	}
 
-	lpc43xx_iap_init(t->flash);
+	lpc_flash_s *const flash = llist_begin(&t->flash_list);
+	lpc43xx_iap_init((target_flash_s *)flash);
 
 	/* special command to compute/write magic vector for signature */
-	lpc_flash_s *f = (lpc_flash_s *)t->flash;
-	if (lpc_iap_call(f, NULL, IAP_CMD_SET_ACTIVE_BANK, bank, CPU_CLK_KHZ)) {
+	if (lpc_iap_call(flash, NULL, IAP_CMD_SET_ACTIVE_BANK, bank, CPU_CLK_KHZ)) {
 		tc_printf(t, "Set bootable failed.\n");
 		return false;
 	}

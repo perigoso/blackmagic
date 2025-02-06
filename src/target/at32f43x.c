@@ -145,7 +145,7 @@ static void at32f43_add_flash(target_s *const target, const target_addr_t addr, 
 	if (length == 0)
 		return;
 
-	at32f43_flash_s *flash = calloc(1, sizeof(*flash));
+	at32f43_flash_s *const flash = target_add_flash(target, at32f43_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -162,7 +162,6 @@ static void at32f43_add_flash(target_s *const target, const target_addr_t addr, 
 	target_flash->writesize = 1024U;
 	target_flash->erased = 0xffU;
 	flash->bank_reg_offset = bank_reg_offset;
-	target_add_flash(target, target_flash);
 }
 
 static void at32f43_configure_dbgmcu(target_s *target)
@@ -545,7 +544,7 @@ static bool at32f43_mass_erase(target_s *const target, platform_timeout_s *const
 		return false;
 
 	/* For dual-bank targets, mass erase bank 2 as well */
-	if (target->flash->next)
+	if (llist_size(&target->flash_list) > 1U)
 		return at32f43_mass_erase_bank(target, AT32F43x_FLASH_BANK2_REG_OFFSET, print_progess);
 	return true;
 }
@@ -610,7 +609,7 @@ static bool at32f43_option_overwrite(target_s *const target, const uint16_t *con
 static bool at32f43_option_write(target_s *const target, const uint32_t addr, const uint16_t value)
 {
 	/* Arterytek F435/F437 has either 512 bytes or 4 KiB worth of USD */
-	const target_flash_s *target_flash = target->flash;
+	const target_flash_s *target_flash = llist_begin(&target->flash_list);
 	const uint16_t ob_count = target_flash->blocksize == 4096U ? AT32F43x_4K_OB_COUNT : AT32F43x_2K_OB_COUNT;
 
 	const uint32_t index = (addr - AT32F43x_USD_BASE) >> 1U;
@@ -699,7 +698,7 @@ static bool at32f43_cmd_option(target_s *target, int argc, const char **argv)
 		tc_printf(target, "usage: monitor option erase\nusage: monitor option <addr> <value>\n");
 
 	/* When all gets said and done, display the current option bytes values */
-	const target_flash_s *target_flash = target->flash;
+	const target_flash_s *const target_flash = llist_begin(&target->flash_list);
 	const uint16_t ob_count = target_flash->blocksize == 4096U ? AT32F43x_4K_OB_COUNT : AT32F43x_2K_OB_COUNT;
 	uint16_t values[8] = {0};
 	for (size_t i = 0U; i < ob_count * 2U; i += 16U) {

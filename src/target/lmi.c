@@ -109,7 +109,7 @@ static const uint16_t lmi_flash_write_stub[] = {
 
 static void lmi_add_flash(target_s *target, size_t length)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -121,7 +121,6 @@ static void lmi_add_flash(target_s *target, size_t length)
 	flash->erase = lmi_flash_erase;
 	flash->write = lmi_flash_write;
 	flash->erased = 0xff;
-	target_add_flash(target, flash);
 }
 
 bool lm3s_probe(target_s *const target, const uint16_t did1)

@@ -71,7 +71,7 @@ static bool ch32f1_flash_write(target_flash_s *flash, target_addr_t dest, const 
 /* "fast" Flash driver for CH32F10x chips */
 static void ch32f1_add_flash(target_s *target, uint32_t addr, size_t length, size_t erasesize)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -84,7 +84,6 @@ static void ch32f1_add_flash(target_s *target, uint32_t addr, size_t length, siz
 	flash->write = ch32f1_flash_write;
 	flash->writesize = erasesize;
 	flash->erased = 0xffU;
-	target_add_flash(target, flash);
 }
 
 static void ch32f1_flash_ctrl_set(target_s *const target, const uint32_t value)

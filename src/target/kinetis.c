@@ -136,13 +136,13 @@ typedef struct kinetis_flash {
 static void kinetis_add_flash(
 	target_s *const t, const uint32_t addr, const size_t length, const size_t erasesize, const size_t write_len)
 {
-	kinetis_flash_s *kf = calloc(1, sizeof(*kf));
+	kinetis_flash_s *const kf = target_add_flash(t, kinetis_flash_s);
 	if (!kf) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
 	}
 
-	target_flash_s *f = &kf->f;
+	target_flash_s *const f = &kf->f;
 	f->start = addr;
 	f->length = length;
 	f->blocksize = erasesize;
@@ -151,7 +151,6 @@ static void kinetis_add_flash(
 	f->done = kinetis_flash_done;
 	f->erased = 0xff;
 	kf->write_len = write_len;
-	target_add_flash(t, f);
 }
 
 static void kl_s32k14_setup(

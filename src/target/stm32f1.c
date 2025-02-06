@@ -177,7 +177,7 @@ static bool stm32f1_mass_erase(target_s *target, platform_timeout_s *print_proge
 
 static void stm32f1_add_flash(target_s *target, uint32_t addr, size_t length, size_t erasesize)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -190,7 +190,6 @@ static void stm32f1_add_flash(target_s *target, uint32_t addr, size_t length, si
 	flash->erase = stm32f1_flash_erase;
 	flash->write = stm32f1_flash_write;
 	flash->erased = 0xff;
-	target_add_flash(target, flash);
 }
 
 static uint16_t stm32f1_read_idcode(target_s *const target, target_addr32_t *const config_taddr)

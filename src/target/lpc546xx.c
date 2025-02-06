@@ -186,7 +186,7 @@ static bool lpc546xx_cmd_erase_sector(target_s *t, int argc, const char **argv)
 
 	if (argc > 1) {
 		uint32_t sector_addr = strtoul(argv[1], NULL, 0);
-		sector_addr *= t->flash->blocksize;
+		sector_addr *= ((target_flash_s *)llist_begin(&t->flash_list))->blocksize;
 		return target_flash_erase(t, sector_addr, 1U);
 	}
 	return true;
@@ -196,7 +196,7 @@ static bool lpc546xx_cmd_read_partid(target_s *target, int argc, const char **ar
 {
 	(void)argc;
 	(void)argv;
-	lpc_flash_s *flash = (lpc_flash_s *)target->flash;
+	lpc_flash_s *flash = (lpc_flash_s *)llist_begin(&target->flash_list);
 	iap_result_s result;
 	if (lpc_iap_call(flash, &result, IAP_CMD_PARTID))
 		return false;
@@ -208,7 +208,7 @@ static bool lpc546xx_cmd_read_uid(target_s *target, int argc, const char **argv)
 {
 	(void)argc;
 	(void)argv;
-	lpc_flash_s *flash = (lpc_flash_s *)target->flash;
+	lpc_flash_s *flash = (lpc_flash_s *)llist_begin(&target->flash_list);
 	iap_result_s result = {0};
 	if (lpc_iap_call(flash, &result, IAP_CMD_READUID))
 		return false;
@@ -251,11 +251,13 @@ static bool lpc546xx_cmd_reset(target_s *t, int argc, const char **argv)
 static bool lpc546xx_cmd_write_sector(target_s *t, int argc, const char **argv)
 {
 	if (argc > 1) {
-		const uint32_t sector_size = t->flash->blocksize;
+		target_flash_s *const flash = llist_begin(&t->flash_list);
+
+		const uint32_t sector_size = flash->blocksize;
 		uint32_t sector_addr = strtoul(argv[1], NULL, 0);
 		sector_addr *= sector_size;
 
-		if (!lpc546xx_flash_erase(t->flash, sector_addr, 1U))
+		if (!lpc546xx_flash_erase(flash, sector_addr, 1U))
 			return false;
 
 		uint8_t *buf = calloc(1, sector_size);
@@ -266,7 +268,7 @@ static bool lpc546xx_cmd_write_sector(target_s *t, int argc, const char **argv)
 		for (uint32_t i = 0; i < sector_size; i++)
 			buf[i] = i & 0xffU;
 
-		const bool result = lpc_flash_write_magic_vect(t->flash, sector_addr, buf, sector_size);
+		const bool result = lpc_flash_write_magic_vect(flash, sector_addr, buf, sector_size);
 		free(buf);
 		return result;
 	}

@@ -456,7 +456,7 @@ static bool lpc55xx_flash_write(target_flash_s *flash, target_addr_t dest, const
 
 static target_flash_s *lpc55xx_add_flash(target_s *target)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return NULL;
@@ -490,8 +490,6 @@ static target_flash_s *lpc55xx_add_flash(target_s *target)
 	flash->erase = lpc55xx_flash_erase;
 	flash->write = lpc55xx_flash_write;
 	flash->erased = 0xff;
-
-	target_add_flash(target, flash);
 
 	return flash;
 }

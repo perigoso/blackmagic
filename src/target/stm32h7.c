@@ -222,13 +222,13 @@ static uint32_t stm32h7_flash_bank_base(const uint32_t addr)
 
 static void stm32h7_add_flash(target_s *target, uint32_t addr, size_t length, size_t blocksize)
 {
-	stm32h7_flash_s *flash = calloc(1, sizeof(*flash));
+	stm32h7_flash_s *const flash = target_add_flash(target, stm32h7_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
 	}
 
-	target_flash_s *target_flash = &flash->target_flash;
+	target_flash_s *const target_flash = &flash->target_flash;
 	target_flash->start = addr;
 	target_flash->length = length;
 	target_flash->blocksize = blocksize;
@@ -240,7 +240,6 @@ static void stm32h7_add_flash(target_s *target, uint32_t addr, size_t length, si
 	target_flash->erased = 0xffU;
 	flash->regbase = stm32h7_flash_bank_base(addr);
 	flash->psize = ALIGN_64BIT;
-	target_add_flash(target, target_flash);
 }
 
 static void stm32h7_configure_wdts(target_s *const target)
@@ -573,7 +572,8 @@ static bool stm32h7_erase_bank(target_s *const target, const align_e psize, cons
 		return false;
 	}
 	/* BER and start can be merged per §4.3.10 "Standard flash bank erase sequence" of RM0433 rev8, pg166. */
-	const uint32_t ctrl = stm32h7_flash_cr(target->flash->blocksize,
+	const target_flash_s *const flash = llist_begin(&target->flash_list);
+	const uint32_t ctrl = stm32h7_flash_cr(flash->blocksize,
 		(psize << STM32H7_FLASH_CTRL_PSIZE_SHIFT) | STM32H7_FLASH_CTRL_BANK_ERASE | STM32H7_FLASH_CTRL_START, 0);
 	target_mem32_write32(target, reg_base + STM32H7_FLASH_CTRL, ctrl);
 	DEBUG_INFO("Mass erase of bank started\n");
@@ -609,7 +609,8 @@ static bool stm32h7_mass_erase(target_s *const target, platform_timeout_s *const
 	 * A dry-run walk-through says it'll pull out the psize for the first Flash region added by stm32h7_probe()
 	 * because all Flash regions added by stm32h7_add_flash match the if condition. This looks redundant and wrong.
 	 */
-	for (target_flash_s *flash = target->flash; flash; flash = flash->next) {
+	llist_for_each(target_flash_s, flash, &target->flash_list)
+	{
 		if (flash->write == stm32h7_flash_write)
 			psize = ((struct stm32h7_flash *)flash)->psize;
 	}
@@ -694,7 +695,8 @@ static bool stm32h7_cmd_psize(target_s *target, int argc, const char **argv)
 		 * A dry-run walk-through says it'll pull out the psize for the first Flash region added by stm32h7_probe()
 		 * because all Flash regions added by stm32h7_add_flash match the if condition. This looks redundant and wrong.
 		 */
-		for (target_flash_s *flash = target->flash; flash; flash = flash->next) {
+		llist_for_each(target_flash_s, flash, &target->flash_list)
+		{
 			if (flash->write == stm32h7_flash_write)
 				psize = ((stm32h7_flash_s *)flash)->psize;
 		}
@@ -709,7 +711,8 @@ static bool stm32h7_cmd_psize(target_s *target, int argc, const char **argv)
 		 * A dry-run walk-through says it'll overwrite psize for every Flash region added by stm32h7_probe()
 		 * because all Flash regions added by stm32h7_add_flash match the if condition. This looks redundant and wrong.
 		 */
-		for (target_flash_s *flash = target->flash; flash; flash = flash->next) {
+		llist_for_each(target_flash_s, flash, &target->flash_list)
+		{
 			if (flash->write == stm32h7_flash_write)
 				((stm32h7_flash_s *)flash)->psize = psize;
 		}

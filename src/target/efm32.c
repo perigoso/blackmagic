@@ -502,7 +502,7 @@ static efm32_v2_di_miscchip_s efm32_v2_read_miscchip(target_s *t, uint8_t di_ver
 
 static void efm32_add_flash(target_s *t, target_addr_t addr, size_t length, size_t page_size)
 {
-	target_flash_s *f = calloc(1, sizeof(*f));
+	target_flash_s *const f = target_add_flash(t, target_flash_s);
 	if (!f) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -514,7 +514,6 @@ static void efm32_add_flash(target_s *t, target_addr_t addr, size_t length, size
 	f->erase = efm32_flash_erase;
 	f->write = efm32_flash_write;
 	f->writesize = page_size;
-	target_add_flash(t, f);
 }
 
 /* Lookup device */

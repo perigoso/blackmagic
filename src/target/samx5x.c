@@ -288,7 +288,7 @@ samx5x_descr_s samx5x_parse_device_id(uint32_t did)
 
 static void samx5x_add_flash(target_s *t, uint32_t addr, size_t length, size_t erase_block_size, size_t write_page_size)
 {
-	target_flash_s *f = calloc(1, sizeof(*f));
+	target_flash_s *const f = target_add_flash(t, target_flash_s);
 	if (!f) { /* calloc failed: heap exhaustion */
 		DEBUG_INFO("calloc: failed in %s\n", __func__);
 		return;
@@ -300,7 +300,6 @@ static void samx5x_add_flash(target_s *t, uint32_t addr, size_t length, size_t e
 	f->erase = samx5x_flash_erase;
 	f->write = samx5x_flash_write;
 	f->writesize = write_page_size;
-	target_add_flash(t, f);
 }
 
 #define SAMX5X_VARIANT_STR_LENGTH 60U

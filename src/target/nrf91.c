@@ -68,7 +68,7 @@ static bool nrf91_flash_write(target_flash_s *flash, target_addr_t dest, const v
 
 static void nrf91_add_flash(target_s *target, uint32_t addr, size_t length, size_t erasesize)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_WARN("calloc: failed in %s\n", __func__);
 		return;
@@ -80,7 +80,6 @@ static void nrf91_add_flash(target_s *target, uint32_t addr, size_t length, size
 	flash->erase = nrf91_flash_erase;
 	flash->write = nrf91_flash_write;
 	flash->erased = 0xff;
-	target_add_flash(target, flash);
 }
 
 bool nrf91_probe(target_s *target)

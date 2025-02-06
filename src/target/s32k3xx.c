@@ -96,13 +96,13 @@ typedef struct s32k3xx_flash {
 static void s32k3xx_add_flash(
 	target_s *const target, const uint32_t addr, const size_t length, const size_t erasesize, const uint8_t block)
 {
-	s32k3xx_flash_s *s32_flash = calloc(1, sizeof(*s32_flash));
+	s32k3xx_flash_s *const s32_flash = target_add_flash(target, s32k3xx_flash_s);
 	if (!s32_flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
 	}
 
-	target_flash_s *flash = &s32_flash->flash;
+	target_flash_s *const flash = &s32_flash->flash;
 	flash->start = addr;
 	flash->length = length;
 	flash->blocksize = erasesize;
@@ -111,7 +111,6 @@ static void s32k3xx_add_flash(
 	flash->write = s32k3xx_flash_write;
 	flash->erased = 0xffU;
 	s32_flash->block = block;
-	target_add_flash(target, flash);
 }
 
 bool s32k3xx_probe(target_s *const target)

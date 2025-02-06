@@ -42,6 +42,8 @@
 
 target_s *target_list = NULL;
 
+static void target_flash_dtor(void *flash_storage);
+
 static bool target_cmd_mass_erase(target_s *target, int argc, const char **argv);
 static bool target_cmd_range_erase(target_s *target, int argc, const char **argv);
 static bool target_cmd_redirect_output(target_s *target, int argc, const char **argv);
@@ -52,6 +54,12 @@ const command_s target_cmd_list[] = {
 	{"redirect_stdout", target_cmd_redirect_output, "Redirect semihosting output to aux USB serial"},
 	{NULL, NULL, NULL},
 };
+
+static void target_flash_dtor(void *flash_storage)
+{
+	target_flash_s *flash = (target_flash_s *)flash_storage;
+	free(flash->buf);
+}
 
 target_s *target_new(void)
 {
@@ -72,6 +80,7 @@ target_s *target_new(void)
 	target->target_storage = NULL;
 
 	target->ram_list = (llist_s)llist_init();
+	target->flash_list = (llist_s)llist_init_dtor(target_flash_dtor);
 
 	target_add_commands(target, target_cmd_list, "Target");
 	return target;
@@ -92,13 +101,7 @@ void target_ram_map_free(target_s *target)
 
 void target_flash_map_free(target_s *target)
 {
-	while (target->flash) {
-		target_flash_s *next = target->flash->next;
-		if (target->flash->buf)
-			free(target->flash->buf);
-		free(target->flash);
-		target->flash = next;
-	}
+	llist_destroy(&target->flash_list);
 }
 
 void target_mem_map_free(target_s *target)
@@ -211,11 +214,21 @@ void target_add_ram64(target_s *const target, const target_addr64_t start, const
 	ram->length = len;
 }
 
-void target_add_flash(target_s *target, target_flash_s *flash)
+void *target_add_flash_typesize(target_s *const target, const size_t type_size)
 {
-	flash->t = target;
-	flash->next = target->flash;
-	target->flash = flash;
+	if (type_size < sizeof(target_flash_s)) {
+		DEBUG_ERROR("Invalid target flash type size\n");
+		return NULL;
+	}
+	target_flash_s *flash = llist_append_new(&target->flash_list, type_size);
+	if (!flash) { /* malloc failed: heap exhaustion */
+		DEBUG_ERROR("malloc: failed in %s\n", __func__);
+		return NULL;
+	}
+
+	flash->t = target;     /* Set the target */
+	flash->erased = 0xffU; /* Default erased value */
+	return flash;
 }
 
 bool target_enter_flash_mode_stub(target_s *target)
@@ -251,8 +264,10 @@ bool target_mem_map(target_s *target, char *tmp, size_t len)
 		offset += map_ram(tmp + offset, len - offset, ram);
 	}
 	/* Map each defined Flash */
-	for (target_flash_s *flash = target->flash; flash; flash = flash->next)
+	llist_for_each(target_flash_s, flash, &target->flash_list)
+	{
 		offset += map_flash(tmp + offset, len - offset, flash);
+	}
 	offset += snprintf(tmp + offset, len - offset, "</memory-map>");
 	return offset < len - 1U;
 }

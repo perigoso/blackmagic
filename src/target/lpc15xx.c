@@ -40,7 +40,7 @@ static bool lpc15xx_read_uid(target_s *target, int argc, const char *argv[])
 {
 	(void)argc;
 	(void)argv;
-	struct lpc_flash *flash = (struct lpc_flash *)target->flash;
+	lpc_flash_s *const flash = llist_begin(&target->flash_list);
 	iap_result_s result = {0};
 	if (lpc_iap_call(flash, &result, IAP_CMD_READUID))
 		return false;

@@ -142,7 +142,7 @@ bool ch579_probe(target_s *target)
 
 	target->driver = "CH579";
 
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return false;
@@ -156,7 +156,6 @@ bool ch579_probe(target_s *target)
 	flash->prepare = ch579_flash_prepare;
 	flash->done = ch579_flash_done;
 	flash->erased = 0xffU;
-	target_add_flash(target, flash);
 
 	target_add_ram32(target, CH579_SRAM_BASE_ADDR, CH579_SRAM_SIZE);
 	target_add_commands(target, ch579_cmd_list, target->driver);

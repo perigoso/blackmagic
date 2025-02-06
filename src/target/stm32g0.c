@@ -187,7 +187,7 @@ const command_s stm32g0_cmd_list[] = {
 
 static void stm32g0_add_flash(target_s *target, uint32_t addr, size_t length, size_t blocksize)
 {
-	target_flash_s *flash = calloc(1, sizeof(*flash));
+	target_flash_s *const flash = target_add_flash(target, target_flash_s);
 	if (!flash) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
@@ -200,7 +200,6 @@ static void stm32g0_add_flash(target_s *target, uint32_t addr, size_t length, si
 	flash->write = stm32g0_flash_write;
 	flash->writesize = blocksize;
 	flash->erased = 0xffU;
-	target_add_flash(target, flash);
 }
 
 static bool stm32g0_configure_dbgmcu(target_s *const target)
