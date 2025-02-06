@@ -44,6 +44,7 @@
 #include "semihosting.h"
 #include "platform.h"
 #include "maths_utils.h"
+#include "llist.h"
 
 #include <assert.h>
 
@@ -204,7 +205,8 @@ static void cortexm_cache_clean(
 	/* flush data cache for RAM regions that intersect requested region */
 	const target_addr32_t mem_end = addr + len; /* following code is NOP if wraparound */
 	/* requested region is [src, src_end) */
-	for (target_ram_s *ram = target->ram; ram; ram = ram->next) {
+	llist_for_each(target_ram_s, ram, &target->ram_list)
+	{
 		target_addr32_t region_start = ram->start;
 		target_addr32_t region_end = ram->start + ram->length;
 		/* RAM region is [region_start, region_end) */

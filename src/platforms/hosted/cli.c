@@ -508,18 +508,9 @@ int cl_execute(bmda_cli_options_s *opt)
 	}
 
 	/* List each defined RAM region */
-	size_t ram_regions = 0;
-	for (target_ram_s *ram = target->ram; ram; ram = ram->next)
-		++ram_regions;
-
-	for (size_t region = 0; region < ram_regions; ++region) {
-		target_ram_s *ram = target->ram;
-		for (size_t i = ram_regions - 1U; ram; ram = ram->next, --i) {
-			if (region == i) {
-				DEBUG_INFO("RAM   Start: 0x%08" PRIx32 " length = 0x%zx\n", ram->start, ram->length);
-				break;
-			}
-		}
+	llist_for_each(target_ram_s, ram, &target->ram_list)
+	{
+		DEBUG_INFO("RAM   Start: 0x%08" PRIx32 " length = 0x%zx\n", ram->start, ram->length);
 	}
 
 	/* Always scan memory map to find lowest flash */

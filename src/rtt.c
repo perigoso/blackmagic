@@ -187,7 +187,8 @@ static void find_rtt(target_s *const cur_target)
 	rtt_cbaddr = 0;
 	if (!rtt_flag_ram) {
 		/* search all of target ram */
-		for (const target_ram_s *r = cur_target->ram; r; r = r->next) {
+		llist_for_each(target_ram_s, r, &cur_target->ram_list)
+		{
 			const uint32_t ram_start = r->start;
 			const uint32_t ram_end = r->start + r->length;
 			if (rtt_ident[0] == 0)

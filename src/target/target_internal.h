@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include "platform_support.h"
 #include "target_probe.h"
+#include "llist.h"
 
 #define TOPT_INHIBIT_NRST           (1U << 0U)  /* Target misbehaves if reset using nRST line */
 #define TOPT_NON_HALTING_MEM_IO     (1U << 30U) /* Target does not need halting for memory I/O */
@@ -40,14 +41,11 @@ typedef enum flash_operation {
 	FLASH_OPERATION_WRITE,
 } flash_operation_e;
 
-typedef struct target_ram target_ram_s;
-
-struct target_ram {
+typedef struct target_ram {
 	/* XXX: This needs adjusting for 64-bit operations */
 	target_addr32_t start;
 	size_t length;
-	target_ram_s *next;
-};
+} target_ram_s;
 
 typedef struct target_flash target_flash_s;
 
@@ -173,7 +171,7 @@ struct target {
 	bool attached;
 	bool flash_mode;
 
-	target_ram_s *ram;
+	llist_s ram_list;
 	target_flash_s *flash;
 
 	/* Other stuff */

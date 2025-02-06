@@ -50,6 +50,7 @@
 #include "semihosting_internal.h"
 #include "buffer_utils.h"
 #include "timeofday.h"
+#include "llist.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -629,7 +630,8 @@ int32_t semihosting_file_length(target_s *const target, const semihosting_s *con
 	target->tc->semihosting_buffer_ptr = file_stat;
 	target->tc->semihosting_buffer_len = sizeof(file_stat);
 	/* Call GDB and ask for the file descriptor's stat info */
-	gdb_putpacket_str_f("Ffstat,%X,%08" PRIX32, (unsigned)fd, target->ram->start);
+	const target_ram_s *const ram = llist_begin(&target->ram_list);
+	gdb_putpacket_str_f("Ffstat,%X,%08" PRIX32, (unsigned)fd, ram->start);
 	const int32_t stat_result = semihosting_get_gdb_response(target->tc);
 	target->target_options &= ~TOPT_IN_SEMIHOSTING_SYSCALL;
 	/* Extract the lower half of the file size from the buffer */
@@ -650,7 +652,8 @@ semihosting_time_s semihosting_get_time(target_s *const target)
 	target->tc->semihosting_buffer_ptr = time_value;
 	target->tc->semihosting_buffer_len = sizeof(time_value);
 	/* Call GDB and ask for the current time using gettimeofday() */
-	gdb_putpacket_str_f("Fgettimeofday,%08" PRIX32 ",%08" PRIX32, target->ram->start, (target_addr_t)NULL);
+	const target_ram_s *const ram = llist_begin(&target->ram_list);
+	gdb_putpacket_str_f("Fgettimeofday,%08" PRIX32 ",%08" PRIX32, ram->start, (target_addr_t)NULL);
 	const int32_t result = semihosting_get_gdb_response(target->tc);
 	target->target_options &= ~TOPT_IN_SEMIHOSTING_SYSCALL;
 	/* Check if the GDB remote gettimeofday() failed */
@@ -738,7 +741,8 @@ int32_t semihosting_readc(target_s *const target)
 	target->tc->semihosting_buffer_ptr = &ch;
 	target->tc->semihosting_buffer_len = 1U;
 	/* Call GDB and ask for a character using read(STDIN_FILENO) */
-	const int32_t result = semihosting_remote_read(target, STDIN_FILENO, target->ram->start, 1U);
+	const target_ram_s *const ram = llist_begin(&target->ram_list);
+	const int32_t result = semihosting_remote_read(target, STDIN_FILENO, ram->start, 1U);
 	target->target_options &= ~TOPT_IN_SEMIHOSTING_SYSCALL;
 	/* Check if the GDB remote read() */
 	if (result != 1)

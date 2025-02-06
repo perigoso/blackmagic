@@ -22,6 +22,7 @@
 #include "target_internal.h"
 #include "gdb_packet.h"
 #include "command.h"
+#include "llist.h"
 
 #include <stdarg.h>
 #include <assert.h>
@@ -72,6 +73,8 @@ target_s *target_new(void)
 
 	target->target_storage = NULL;
 
+	target->ram_list = (llist_s)llist_init();
+
 	target_add_commands(target, target_cmd_list, "Target");
 	return target;
 }
@@ -86,11 +89,7 @@ size_t target_foreach(void (*callback)(size_t index, target_s *target, void *con
 
 void target_ram_map_free(target_s *target)
 {
-	while (target->ram) {
-		target_ram_s *next = target->ram->next;
-		free(target->ram);
-		target->ram = next;
-	}
+	llist_destroy(&target->ram_list);
 }
 
 void target_flash_map_free(target_s *target)
@@ -205,16 +204,13 @@ void target_add_ram32(target_s *const target, const target_addr32_t start, const
 
 void target_add_ram64(target_s *const target, const target_addr64_t start, const uint64_t len)
 {
-	target_ram_s *ram = malloc(sizeof(*ram));
+	target_ram_s *ram = llist_append_new(&target->ram_list, sizeof(target_ram_s));
 	if (!ram) { /* malloc failed: heap exhaustion */
 		DEBUG_ERROR("malloc: failed in %s\n", __func__);
 		return;
 	}
-
 	ram->start = start;
 	ram->length = len;
-	ram->next = target->ram;
-	target->ram = ram;
 }
 
 void target_add_flash(target_s *target, target_flash_s *flash)
@@ -264,8 +260,10 @@ bool target_mem_map(target_s *target, char *tmp, size_t len)
 	size_t offset = 0;
 	offset = snprintf(tmp + offset, len - offset, "<memory-map>");
 	/* Map each defined RAM */
-	for (target_ram_s *ram = target->ram; ram; ram = ram->next)
+	llist_for_each(target_ram_s, ram, &target->ram_list)
+	{
 		offset += map_ram(tmp + offset, len - offset, ram);
+	}
 	/* Map each defined Flash */
 	for (target_flash_s *flash = target->flash; flash; flash = flash->next)
 		offset += map_flash(tmp + offset, len - offset, flash);
