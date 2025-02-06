@@ -206,6 +206,11 @@ void target_add_ram64(target_s *target, target_addr64_t start, uint64_t len);
 void *target_add_flash_typesize(target_s *target, size_t typesize);
 #define target_add_flash(target, type) (type *)target_add_flash_typesize(target, sizeof(type))
 
+/* List iteration utilities */
+#define target_for_each_ram(target, var)               llist_for_each(target_ram_s, var, &target->ram_list)
+#define target_for_each_flash_typed(target, var, type) llist_for_each(type, var, &target->flash_list)
+#define target_for_each_flash(target, var)             target_for_each_flash_typed(target, var, target_flash_s)
+
 /* No-op stub for enter flash mode */
 bool target_enter_flash_mode_stub(target_s *target);
 
