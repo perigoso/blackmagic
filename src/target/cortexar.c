@@ -1451,7 +1451,8 @@ static target_halt_reason_e cortexar_halt_poll(target_s *const target, target_ad
 	case CORTEXAR_DBG_DSCR_MOE_ASYNC_WATCH: {
 		const cortexar_priv_s *const priv = (cortexar_priv_s *)target->priv;
 		if (priv->base.watchpoints_mask == 1U) {
-			for (const breakwatch_s *breakwatch = target->bw_list; breakwatch; breakwatch = breakwatch->next) {
+			llist_for_each(breakwatch_s, breakwatch, &target->bw_list)
+			{
 				if (breakwatch->type != TARGET_WATCH_READ && breakwatch->type != TARGET_WATCH_WRITE &&
 					breakwatch->type != TARGET_WATCH_ACCESS)
 					continue;

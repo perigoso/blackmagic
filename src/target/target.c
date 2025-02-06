@@ -69,6 +69,8 @@ static void target_ctor(void *target_storage)
 
 	target->target_storage = NULL;
 
+	target->bw_list = (llist_s)llist_init();
+
 	target->ram_list = (llist_s)llist_init();
 	target->flash_list = (llist_s)llist_init_dtor(target_flash_dtor);
 
@@ -100,13 +102,9 @@ static void target_dtor(void *target_storage)
 		target->commands = tc;
 	}
 	free(target->target_storage);
+	llist_destroy(&target->bw_list);
 	llist_destroy(&target->ram_list);
 	llist_destroy(&target->flash_list);
-	while (target->bw_list) {
-		void *next = target->bw_list->next;
-		free(target->bw_list);
-		target->bw_list = next;
-	}
 }
 
 target_s *target_new(void)
@@ -459,41 +457,38 @@ void target_set_heapinfo(target_s *target, target_addr_t heap_base, target_addr_
 /* Break-/watchpoint functions */
 int target_breakwatch_set(target_s *target, target_breakwatch_e type, target_addr_t addr, size_t len)
 {
-	breakwatch_s bw = {
-		.type = type,
-		.addr = addr,
-		.size = len,
-	};
+	breakwatch_s *const bw = llist_prepend_new(&target->bw_list, sizeof(breakwatch_s));
+	if (bw == NULL) { /* malloc failed: heap exhaustion */
+		DEBUG_ERROR("malloc: failed in %s\n", __func__);
+		return 1;
+	}
+
+	bw->type = type;
+	bw->addr = addr;
+	bw->size = len;
+
 	int ret = 1;
 
 	if (target->breakwatch_set)
-		ret = target->breakwatch_set(target, &bw);
+		ret = target->breakwatch_set(target, bw);
 
-	if (ret == 0) {
-		/* Success, make a heap copy */
-		breakwatch_s *bwm = malloc(sizeof(bw));
-		if (!bwm) { /* malloc failed: heap exhaustion */
-			DEBUG_ERROR("malloc: failed in %s\n", __func__);
-			return 1;
-		}
-		memcpy(bwm, &bw, sizeof(bw));
-
-		/* Add to list */
-		bwm->next = target->bw_list;
-		target->bw_list = bwm;
-	}
+	if (ret != 0)
+		/* Failed to set the breakpoint, remove it from the list */
+		llist_remove(&target->bw_list, bw);
 
 	return ret;
 }
 
 int target_breakwatch_clear(target_s *target, target_breakwatch_e type, target_addr_t addr, size_t len)
 {
-	breakwatch_s *bwp = NULL, *bw;
-	for (bw = target->bw_list; bw; bwp = bw, bw = bw->next) {
-		if (bw->type == type && bw->addr == addr && bw->size == len)
+	breakwatch_s *bw = NULL;
+	llist_for_each(breakwatch_s, bwp, &target->bw_list)
+	{
+		if (bwp->type == type && bwp->addr == addr && bwp->size == len) {
+			bw = bwp;
 			break;
+		}
 	}
-
 	if (bw == NULL)
 		return -1;
 
@@ -501,13 +496,9 @@ int target_breakwatch_clear(target_s *target, target_breakwatch_e type, target_a
 	if (target->breakwatch_clear)
 		ret = target->breakwatch_clear(target, bw);
 
-	if (ret == 0) {
-		if (bwp == NULL)
-			target->bw_list = bw->next;
-		else
-			bwp->next = bw->next;
-		free(bw);
-	}
+	if (ret == 0)
+		llist_remove(&target->bw_list, bw);
+
 	return ret;
 }
 

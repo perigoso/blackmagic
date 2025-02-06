@@ -95,10 +95,7 @@ struct target_command {
 	target_command_s *next;
 };
 
-typedef struct breakwatch breakwatch_s;
-
-struct breakwatch {
-	breakwatch_s *next;
+typedef struct breakwatch {
 #if CONFIG_POINTER_SIZE == 8
 	target_addr64_t addr;
 	size_t size;
@@ -110,7 +107,7 @@ struct breakwatch {
 	size_t size;
 	uint32_t reserved[4]; /* For use by the implementing driver */
 #endif
-};
+} breakwatch_s;
 
 #define MAX_CMDLINE 81
 
@@ -146,7 +143,7 @@ struct target {
 	/* Break-/watchpoint functions */
 	int (*breakwatch_set)(target_s *target, breakwatch_s *);
 	int (*breakwatch_clear)(target_s *target, breakwatch_s *);
-	breakwatch_s *bw_list;
+	llist_s bw_list;
 
 	/* Recovery functions */
 	bool (*mass_erase)(target_s *target, platform_timeout_s *print_progess); /* Mass erase all target flash */
