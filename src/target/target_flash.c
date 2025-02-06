@@ -38,6 +38,8 @@
 #include "general.h"
 #include "target_internal.h"
 
+#define FLASH_WRITE_BUFFER_CEILING 1024U
+
 static bool flash_done(target_flash_s *flash);
 
 target_flash_s *target_flash_for_addr(target_s *target, uint32_t addr)
@@ -247,6 +249,20 @@ bool target_flash_mass_erase(target_s *const target)
 
 bool flash_buffer_alloc(target_flash_s *flash)
 {
+	/* If a writesize is not set, default to blocksize */
+	if (flash->writesize == 0)
+		flash->writesize = flash->blocksize;
+	/* Automatically sized buffer */
+	if (flash->writebufsize == 0U) {
+		/* For targets with larger than FLASH_WRITE_BUFFER_CEILING write size, we use a buffer of write size */
+		/* No point doing math if we can't fit at least 2 writesizes in a buffer */
+		if (flash->writesize <= FLASH_WRITE_BUFFER_CEILING / 2U) {
+			const size_t count = FLASH_WRITE_BUFFER_CEILING / flash->writesize;
+			flash->writebufsize = flash->writesize * count;
+		} else
+			flash->writebufsize = flash->writesize;
+	}
+
 	/* Allocate buffer */
 	flash->buf = malloc(flash->writebufsize);
 	if (!flash->buf) { /* malloc failed: heap exhaustion */

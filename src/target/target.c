@@ -42,8 +42,6 @@
 
 target_s *target_list = NULL;
 
-#define FLASH_WRITE_BUFFER_CEILING 1024U
-
 static bool target_cmd_mass_erase(target_s *target, int argc, const char **argv);
 static bool target_cmd_range_erase(target_s *target, int argc, const char **argv);
 static bool target_cmd_redirect_output(target_s *target, int argc, const char **argv);
@@ -215,18 +213,6 @@ void target_add_ram64(target_s *const target, const target_addr64_t start, const
 
 void target_add_flash(target_s *target, target_flash_s *flash)
 {
-	if (flash->writesize == 0)
-		flash->writesize = flash->blocksize;
-
-	/* Automatically sized buffer */
-	/* For targets with larger than FLASH_WRITE_BUFFER_CEILING write size, we use a buffer of write size */
-	/* No point doing math if we can't fit at least 2 writesizes in a buffer */
-	if (flash->writesize <= FLASH_WRITE_BUFFER_CEILING / 2U) {
-		const size_t count = FLASH_WRITE_BUFFER_CEILING / flash->writesize;
-		flash->writebufsize = flash->writesize * count;
-	} else
-		flash->writebufsize = flash->writesize;
-
 	flash->t = target;
 	flash->next = target->flash;
 	target->flash = flash;
