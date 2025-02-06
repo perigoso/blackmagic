@@ -254,6 +254,8 @@ bool flash_buffer_alloc(target_flash_s *flash)
 		flash->writesize = flash->blocksize;
 	/* Automatically sized buffer */
 	if (flash->writebufsize == 0U) {
+		if (flash->writesize == 0)
+			return false; /* writesize must be set */
 		/* For targets with larger than FLASH_WRITE_BUFFER_CEILING write size, we use a buffer of write size */
 		/* No point doing math if we can't fit at least 2 writesizes in a buffer */
 		if (flash->writesize <= FLASH_WRITE_BUFFER_CEILING / 2U) {
