@@ -25,6 +25,7 @@
 #include "usb.h"
 #include "aux_serial.h"
 #include "morse.h"
+#include "bitbang_jtag.h"
 
 #include <libopencm3/cm3/vector.h>
 #include <libopencm3/stm32/rcc.h>
@@ -278,6 +279,8 @@ void platform_init(void)
 		aux_serial_init();
 
 	setup_vbus_irq();
+
+	bitbang_jtag_register(); /* Register JTAG interface */
 }
 
 int platform_hwversion(void)

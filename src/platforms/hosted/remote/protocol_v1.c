@@ -42,7 +42,7 @@ void remote_v1_init(void)
 	DEBUG_WARN("Probe firmware does not support the newer JTAG commands, please update it.\n");
 	remote_funcs = (bmp_remote_protocol_s){
 		.swd_init = remote_v0_swd_init,
-		.jtag_init = remote_v0_jtag_init,
+		.jtag_iface_init = remote_v0_jtag_iface_init,
 		.adiv5_init = remote_v1_adiv5_init,
 		.add_jtag_dev = remote_v1_add_jtag_dev,
 	};

@@ -62,7 +62,6 @@
 bmda_probe_s bmda_probe_info;
 
 #ifndef ENABLE_GPIOD
-jtag_proc_s jtag_proc;
 swd_proc_s swd_proc;
 #endif
 
@@ -263,61 +262,6 @@ void bmda_add_jtag_dev(const uint32_t dev_index, const jtag_dev_s *const jtag_de
 {
 	if (bmda_probe_info.type == PROBE_TYPE_BMP)
 		remote_add_jtag_dev(dev_index, jtag_dev);
-}
-
-bool bmda_jtag_scan(void)
-{
-	bmda_probe_info.is_jtag = true;
-	platform_max_frequency_set(max_frequency);
-
-	switch (bmda_probe_info.type) {
-	case PROBE_TYPE_BMP:
-	case PROBE_TYPE_FTDI:
-	case PROBE_TYPE_JLINK:
-	case PROBE_TYPE_CMSIS_DAP:
-#ifdef ENABLE_GPIOD
-	case PROBE_TYPE_GPIOD:
-#endif
-		return jtag_scan();
-
-#if HOSTED_BMP_ONLY == 0
-	case PROBE_TYPE_STLINK_V2:
-		return stlink_jtag_scan();
-#endif
-
-	default:
-		return false;
-	}
-}
-
-bool bmda_jtag_init(void)
-{
-	switch (bmda_probe_info.type) {
-	case PROBE_TYPE_BMP:
-		return remote_jtag_init();
-
-#if HOSTED_BMP_ONLY == 0
-	case PROBE_TYPE_STLINK_V2:
-		return false;
-
-	case PROBE_TYPE_FTDI:
-		return ftdi_jtag_init();
-
-	case PROBE_TYPE_JLINK:
-		return jlink_jtag_init();
-
-	case PROBE_TYPE_CMSIS_DAP:
-		return dap_jtag_init();
-#endif
-
-#ifdef ENABLE_GPIOD
-	case PROBE_TYPE_GPIOD:
-		return bmda_gpiod_jtag_init();
-#endif
-
-	default:
-		return false;
-	}
 }
 
 bool bmda_rvswd_scan()

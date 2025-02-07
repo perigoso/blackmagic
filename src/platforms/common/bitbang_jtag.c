@@ -24,12 +24,16 @@
 
 #include <stdio.h>
 
-#include "general.h"
-#include "platform.h"
-#include "jtagtap.h"
 #include "adiv5.h"
+#include "general.h"
+#include "interface.h"
+#include "jtagtap.h"
+#include "platform.h"
+#include "jtag_scan.h"
+#include "bitbang_jtag.h"
 
-jtag_proc_s jtag_proc;
+static bool jtagtap_init(void *driver);
+static void jtagtap_deinit(void *driver);
 
 static void jtagtap_reset(void);
 static void jtagtap_tms_seq(uint32_t tms_states, size_t clock_cycles);
@@ -38,18 +42,35 @@ static void jtagtap_tdi_seq(bool final_tms, const uint8_t *data_in, size_t clock
 static bool jtagtap_next(bool tms, bool tdi);
 static void jtagtap_cycle(bool tms, bool tdi, size_t clock_cycles);
 
-void jtagtap_init(void)
+bool bitbang_jtag_register(void)
 {
+	interface_s *const iface = interface_register_driver_type("jtag", jtag_iface_driver_s);
+	if (iface == NULL)
+		return false;
+
+	jtag_iface_driver_s *const driver = (jtag_iface_driver_s *)iface->driver;
+	driver->jtagtap_reset = jtagtap_reset;
+	driver->jtagtap_next = jtagtap_next;
+	driver->jtagtap_tms_seq = jtagtap_tms_seq;
+	driver->jtagtap_tdi_tdo_seq = jtagtap_tdi_tdo_seq;
+	driver->jtagtap_tdi_seq = jtagtap_tdi_seq;
+	driver->jtagtap_cycle = jtagtap_cycle;
+	driver->tap_idle_cycles = 1;
+
+	iface->init = jtagtap_init;
+	iface->deinit = jtagtap_deinit;
+
+	iface->scan = jtag_scan;
+
+	return true;
+}
+
+static bool jtagtap_init(void *const driver)
+{
+	(void)driver;
+
 	platform_target_clk_output_enable(true);
 	TMS_SET_MODE();
-
-	jtag_proc.jtagtap_reset = jtagtap_reset;
-	jtag_proc.jtagtap_next = jtagtap_next;
-	jtag_proc.jtagtap_tms_seq = jtagtap_tms_seq;
-	jtag_proc.jtagtap_tdi_tdo_seq = jtagtap_tdi_tdo_seq;
-	jtag_proc.jtagtap_tdi_seq = jtagtap_tdi_seq;
-	jtag_proc.jtagtap_cycle = jtagtap_cycle;
-	jtag_proc.tap_idle_cycles = 1;
 
 	/* Ensure we're in JTAG mode. Start by issuing a complete SWD reset of at least 50 reset cycles */
 	jtagtap_cycle(true, false, 51U);
@@ -81,6 +102,14 @@ void jtagtap_init(void)
 	 */
 	jtagtap_tms_seq(ADIV5_ACTIVATION_CODE_ARM_JTAG_DP << 4U, 12U);
 	/* At this point we are definitely in JTAG mode - let the scan logic reset the state machine into a good state. */
+	return true;
+}
+
+static void jtagtap_deinit(void *const driver)
+{
+	(void)driver;
+
+	platform_target_clk_output_enable(false);
 }
 
 static void jtagtap_reset(void)

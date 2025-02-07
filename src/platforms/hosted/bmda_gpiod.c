@@ -43,6 +43,7 @@
 #include <stdbool.h>
 
 #include "bmda_gpiod.h"
+#include "bitbang_jtag.h"
 
 struct gpiod_line *bmda_gpiod_tck_pin;
 struct gpiod_line *bmda_gpiod_tms_pin;
@@ -232,20 +233,12 @@ bool bmda_gpiod_init(bmda_cli_options_s *const cl_opts)
 	if (bmda_gpiod_swclk_pin && bmda_gpiod_swdio_pin)
 		bmda_gpiod_swd_ok = true;
 
-	if (bmda_gpiod_tck_pin && bmda_gpiod_tdi_pin && bmda_gpiod_tdo_pin && bmda_gpiod_tms_pin)
+	if (bmda_gpiod_tck_pin && bmda_gpiod_tdi_pin && bmda_gpiod_tdo_pin && bmda_gpiod_tms_pin) {
 		bmda_gpiod_jtag_ok = true;
+		bitbang_jtag_register();
+	}
 
 	return bmda_gpiod_jtag_ok || bmda_gpiod_swd_ok;
-}
-
-bool bmda_gpiod_jtag_init(void)
-{
-	if (!bmda_gpiod_jtag_ok)
-		return false;
-
-	jtagtap_init();
-
-	return true;
 }
 
 bool bmda_gpiod_swd_init(void)

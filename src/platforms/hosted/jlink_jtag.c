@@ -34,6 +34,9 @@
 #include "jtagtap.h"
 #include "jlink.h"
 #include "jlink_protocol.h"
+#include "interface.h"
+
+static bool jlink_jtag_init(void *driver);
 
 static void jlink_jtag_reset(void);
 static void jlink_jtag_tms_seq(uint32_t tms_states, size_t clock_cycles);
@@ -43,13 +46,41 @@ static bool jlink_jtag_next(bool tms, bool tdi);
 
 static const uint8_t jlink_switch_to_jtag_seq[9U] = {0xffU, 0xffU, 0xffU, 0xffU, 0xffU, 0xffU, 0xffU, 0x3cU, 0xe7U};
 
-bool jlink_jtag_init(void)
+bool jlink_jtag_register(void)
 {
+	/* Try to switch the adaptor into JTAG mode */
+	if (!jlink_select_interface(JLINK_INTERFACE_JTAG)) {
+		DEBUG_ERROR("%s: Failed to select JTAG interface\n", __func__);
+		return false;
+	}
+
+	interface_s *const iface = interface_register_driver_type("jtag", jtag_iface_driver_s);
+	if (iface == NULL)
+		return false;
+
+	/* Set up the underlying JTAG functions using the implementation below */
+	jtag_iface_driver_s *const driver = (jtag_iface_driver_s *)iface->driver;
+	driver->jtagtap_reset = jlink_jtag_reset;
+	driver->jtagtap_next = jlink_jtag_next;
+	driver->jtagtap_tms_seq = jlink_jtag_tms_seq;
+	driver->jtagtap_tdi_tdo_seq = jlink_jtag_tdi_tdo_seq;
+	driver->jtagtap_tdi_seq = jlink_jtag_tdi_seq;
+
+	iface->init = jlink_jtag_init;
+
+	iface->scan = jtag_scan;
+
+	return true;
+}
+
+static bool jlink_jtag_init(void *const driver)
+{
+	(void)driver;
 	DEBUG_PROBE("-> jlink_jtag_init\n");
 
 	/* Try to switch the adaptor into JTAG mode */
 	if (!jlink_select_interface(JLINK_INTERFACE_JTAG)) {
-		DEBUG_ERROR("Failed to select JTAG interface\n");
+		DEBUG_ERROR("%s: Failed to select JTAG interface\n", __func__);
 		return false;
 	}
 
@@ -60,18 +91,14 @@ bool jlink_jtag_init(void)
 		return false;
 	}
 
-	/* Set up the underlying JTAG functions using the implementation below */
-	jtag_proc.jtagtap_reset = jlink_jtag_reset;
-	jtag_proc.jtagtap_next = jlink_jtag_next;
-	jtag_proc.jtagtap_tms_seq = jlink_jtag_tms_seq;
-	jtag_proc.jtagtap_tdi_tdo_seq = jlink_jtag_tdi_tdo_seq;
-	jtag_proc.jtagtap_tdi_seq = jlink_jtag_tdi_seq;
 	return true;
 }
 
 static void jlink_jtag_reset(void)
 {
+#define jtagtap_tms_seq jlink_jtag_tms_seq
 	jtagtap_soft_reset();
+#undef jtagtap_tms_seq
 }
 
 static void jlink_jtag_tms_seq(const uint32_t tms_states, const size_t clock_cycles)

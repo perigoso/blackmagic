@@ -32,7 +32,7 @@ platform_common_includes = include_directories('.')
 
 platform_common_sources = files(
 	'aux_serial.c',
-	'jtagtap.c',
+	'bitbang_jtag.c',
 	'swdptap.c',
 	'usb.c',
 	'usb_dfu_stub.c',

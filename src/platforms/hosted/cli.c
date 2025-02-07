@@ -458,11 +458,11 @@ static void display_target(size_t idx, target_s *target)
 bool scan_for_targets(const bmda_cli_options_s *const opt)
 {
 	if (opt->opt_scanmode == BMP_SCAN_JTAG)
-		return bmda_jtag_scan();
+		return false;
 	if (opt->opt_scanmode == BMP_SCAN_SWD)
 		return bmda_swd_scan_targetid(opt->opt_targetid);
-	if (bmda_jtag_scan())
-		return true;
+	// if (bmda_jtag_scan())
+	// 	return true;
 	DEBUG_WARN("JTAG scan found no devices, trying SWD.\n");
 	if (bmda_swd_scan_targetid(opt->opt_targetid))
 		return true;

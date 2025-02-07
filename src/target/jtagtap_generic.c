@@ -24,41 +24,42 @@
 #include "general.h"
 #include "jtagtap.h"
 
-void jtagtap_tms_seq(const uint32_t tms_states, const size_t clock_cycles)
-{
-	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
-		const bool tms = (tms_states >> cycle) & 1U;
-		jtag_proc.jtagtap_next(tms, true);
-	}
-}
+// void jtagtap_tms_seq(jtag_iface_driver_s *const driver, const uint32_t tms_states, const size_t clock_cycles)
+// {
+// 	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
+// 		const bool tms = (tms_states >> cycle) & 1U;
+// 		driver->jtagtap_next(tms, true);
+// 	}
+// }
 
-void jtagtap_tdi_tdo_seq(
-	uint8_t *const data_out, const uint8_t final_tms, const uint8_t *const data_in, const size_t clock_cycles)
-{
-	uint8_t value = 0;
-	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
-		const size_t bit = cycle & 7U;
-		const size_t byte = cycle >> 3U;
-		const bool tms = cycle + 1U >= clock_cycles && final_tms;
-		const bool tdi = data_in[byte] & (1U << bit);
+// void jtagtap_tdi_tdo_seq(jtag_iface_driver_s *const driver, uint8_t *const data_out, const uint8_t final_tms,
+// 	const uint8_t *const data_in, const size_t clock_cycles)
+// {
+// 	uint8_t value = 0;
+// 	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
+// 		const size_t bit = cycle & 7U;
+// 		const size_t byte = cycle >> 3U;
+// 		const bool tms = cycle + 1U >= clock_cycles && final_tms;
+// 		const bool tdi = data_in[byte] & (1U << bit);
 
-		if (jtag_proc.jtagtap_next(tms, tdi))
-			value |= 1U << bit;
+// 		if (driver->jtagtap_next(tms, tdi))
+// 			value |= 1U << bit;
 
-		if (bit == 7U) {
-			data_out[byte] = value;
-			value = 0;
-		}
-	}
-}
+// 		if (bit == 7U) {
+// 			data_out[byte] = value;
+// 			value = 0;
+// 		}
+// 	}
+// }
 
-void jtagtap_tdi_seq(const uint8_t final_tms, const uint8_t *const data_in, const size_t clock_cycles)
-{
-	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
-		const size_t bit = cycle & 7U;
-		const size_t byte = cycle >> 3U;
-		const bool tms = cycle + 1U >= clock_cycles && final_tms;
-		const bool tdi = data_in[byte] & (1U << bit);
-		jtag_proc.jtagtap_next(tms, tdi);
-	}
-}
+// void jtagtap_tdi_seq(
+// 	jtag_iface_driver_s *const driver, const uint8_t final_tms, const uint8_t *const data_in, const size_t clock_cycles)
+// {
+// 	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
+// 		const size_t bit = cycle & 7U;
+// 		const size_t byte = cycle >> 3U;
+// 		const bool tms = cycle + 1U >= clock_cycles && final_tms;
+// 		const bool tdi = data_in[byte] & (1U << bit);
+// 		driver->jtagtap_next(tms, tdi);
+// 	}
+// }

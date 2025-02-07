@@ -51,13 +51,13 @@
 #define RV_DTMCS_ADDRESS_SHIFT     4U
 
 #ifdef CONFIG_RISCV
-static void riscv_jtag_dtm_init(riscv_dmi_s *dmi);
+static void riscv_jtag_dtm_init(void *driver, riscv_dmi_s *dmi);
 static uint32_t riscv_shift_dtmcs(const riscv_dmi_s *dmi, uint32_t control);
 static riscv_debug_version_e riscv_dtmcs_version(uint32_t dtmcs);
 
 static void riscv_jtag_prepare(target_s *target);
 
-void riscv_jtag_dtm_handler(const uint8_t dev_index)
+void riscv_jtag_dtm_handler(void *const driver, const uint8_t dev_index)
 {
 	riscv_dmi_s *dmi = calloc(1, sizeof(*dmi));
 	if (!dmi) { /* calloc failed: heap exhaustion */
@@ -78,14 +78,16 @@ void riscv_jtag_dtm_handler(const uint8_t dev_index)
 	dmi->designer_code =
 		(designer & JTAG_IDCODE_DESIGNER_JEP106_CONT_MASK) << 1U | (designer & JTAG_IDCODE_DESIGNER_JEP106_CODE_MASK);
 
-	riscv_jtag_dtm_init(dmi);
+	riscv_jtag_dtm_init(driver, dmi);
 	/* If we failed to find any DMs or Harts, free the structure */
 	if (!dmi->ref_count)
 		free(dmi);
 }
 
-static void riscv_jtag_dtm_init(riscv_dmi_s *const dmi)
+static void riscv_jtag_dtm_init(void *const driver, riscv_dmi_s *const dmi)
 {
+	dmi->iface_driver = driver;
+
 	const uint32_t dtmcs = riscv_shift_dtmcs(dmi, RV_DTMCS_NOOP);
 	dmi->version = riscv_dtmcs_version(dtmcs);
 	/* Configure the TAP idle cylces based on what we've read */
@@ -93,7 +95,7 @@ static void riscv_jtag_dtm_init(riscv_dmi_s *const dmi)
 	/* And figure out how many address bits the DMI address space has */
 	dmi->address_width = (dtmcs & RV_DTMCS_ADDRESS_MASK) >> RV_DTMCS_ADDRESS_SHIFT;
 	/* Switch into DMI access mode for speed */
-	jtag_dev_write_ir(dmi->dev_index, IR_DMI);
+	jtag_dev_write_ir(dmi->iface_driver, dmi->dev_index, IR_DMI);
 
 	dmi->prepare = riscv_jtag_prepare;
 	dmi->read = riscv_jtag_dmi_read;
@@ -109,36 +111,37 @@ static void riscv_jtag_dtm_init(riscv_dmi_s *const dmi)
 /* Shift (read + write) the Debug Transport Module Control/Status (DTMCS) register */
 static uint32_t riscv_shift_dtmcs(const riscv_dmi_s *const dmi, const uint32_t control)
 {
-	jtag_dev_write_ir(dmi->dev_index, IR_DTMCS);
+	jtag_dev_write_ir(dmi->iface_driver, dmi->dev_index, IR_DTMCS);
 	uint32_t status = 0;
-	jtag_dev_shift_dr(dmi->dev_index, (uint8_t *)&status, (const uint8_t *)&control, 32U);
+	jtag_dev_shift_dr(dmi->iface_driver, dmi->dev_index, (uint8_t *)&status, (const uint8_t *)&control, 32U);
 	return status;
 }
 
 static void riscv_dmi_reset(const riscv_dmi_s *const dmi)
 {
 	riscv_shift_dtmcs(dmi, RV_DTMCS_DMI_RESET);
-	jtag_dev_write_ir(dmi->dev_index, IR_DMI);
+	jtag_dev_write_ir(dmi->iface_driver, dmi->dev_index, IR_DMI);
 }
 
 static uint8_t riscv_shift_dmi(riscv_dmi_s *const dmi, const uint8_t operation, const uint32_t address,
 	const uint32_t data_in, uint32_t *const data_out)
 {
+	jtag_iface_driver_s *const driver = dmi->iface_driver;
 	jtag_dev_s *device = &jtag_devs[dmi->dev_index];
-	jtagtap_shift_dr();
-	jtag_proc.jtagtap_tdi_seq(false, ones, device->dr_prescan);
+	driver->jtagtap_shift_dr();
+	driver->jtagtap_tdi_seq(false, ones, device->dr_prescan);
 	/* Shift out the 2 bits for the operation, and get the status bits for the previous back */
 	uint8_t status = 0;
-	jtag_proc.jtagtap_tdi_tdo_seq(&status, false, &operation, 2U);
+	driver->jtagtap_tdi_tdo_seq(&status, false, &operation, 2U);
 	/* Then the data component */
 	if (data_out)
-		jtag_proc.jtagtap_tdi_tdo_seq((uint8_t *)data_out, false, (const uint8_t *)&data_in, 32U);
+		driver->jtagtap_tdi_tdo_seq((uint8_t *)data_out, false, (const uint8_t *)&data_in, 32U);
 	else
-		jtag_proc.jtagtap_tdi_seq(false, (const uint8_t *)&data_in, 32U);
+		driver->jtagtap_tdi_seq(false, (const uint8_t *)&data_in, 32U);
 	/* And finally the address component */
-	jtag_proc.jtagtap_tdi_seq(!device->dr_postscan, (const uint8_t *)&address, dmi->address_width);
-	jtag_proc.jtagtap_tdi_seq(true, ones, device->dr_postscan);
-	jtagtap_return_idle(dmi->idle_cycles);
+	driver->jtagtap_tdi_seq(!device->dr_postscan, (const uint8_t *)&address, dmi->address_width);
+	driver->jtagtap_tdi_seq(true, ones, device->dr_postscan);
+	driver->jtagtap_return_idle(dmi->idle_cycles);
 	/* Translate error 1 (Reserved) into RV_DMI_FAILURE per the spec */
 	return status == RV_DMI_RESERVED ? RV_DMI_FAILURE : status;
 }
@@ -214,6 +217,6 @@ static void riscv_jtag_prepare(target_s *const target)
 {
 	riscv_hart_s *const hart = riscv_hart_struct(target);
 	/* We put the TAP into bypass at the end of the JTAG handler, so put it back into DMI */
-	jtag_dev_write_ir(hart->dbg_module->dmi_bus->dev_index, IR_DMI);
+	jtag_dev_write_ir(hart->dbg_module->dmi_bus->iface_driver, hart->dbg_module->dmi_bus->dev_index, IR_DMI);
 }
 #endif

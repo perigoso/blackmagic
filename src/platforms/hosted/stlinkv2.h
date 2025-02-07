@@ -35,7 +35,7 @@
 bool stlink_init(void);
 void stlink_deinit(void);
 bool stlink_swd_scan(void);
-bool stlink_jtag_scan(void);
+bool stlink_jtag_register(void);
 int stlink_hwversion(void);
 const char *stlink_target_voltage(void);
 void stlink_nrst_set_val(bool assert);

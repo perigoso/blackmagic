@@ -91,9 +91,6 @@ static inline void *llist_next(void *const element)
 
 #define llist_for_each(_type, _element, _list) \
 	for (_type *_element = llist_begin(_list); _element != NULL; _element = llist_next(_element))
-#define llist_for_each_safe(_type, _element, _list)                                             \
-	for (_type *_element = llist_begin(_list), *_next = llist_next(_element); _element != NULL; \
-		 _element = _next, _next = llist_next(_element))
 
 static inline bool llist_empty(llist_s *list)
 {

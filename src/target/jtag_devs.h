@@ -34,7 +34,7 @@ typedef struct jtag_dev_descr {
 #if ENABLE_DEBUG == 1
 	const char *descr;
 #endif
-	void (*handler)(uint8_t jd_index);
+	void (*handler)(void *driver, uint8_t jd_index);
 	jtag_ir_quirks_s ir_quirks;
 } jtag_dev_descr_s;
 

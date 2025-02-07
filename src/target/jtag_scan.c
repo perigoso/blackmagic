@@ -40,10 +40,10 @@ uint32_t jtag_dev_count = 0;
 /* bucket of ones for don't care TDI */
 const uint8_t ones[8] = {0xffU, 0xffU, 0xffU, 0xffU, 0xffU, 0xffU, 0xffU, 0xffU};
 
-static bool jtag_read_idcodes(void);
+static bool jtag_read_idcodes(jtag_iface_driver_s *driver);
 static void jtag_display_idcodes(void);
-static bool jtag_read_irs(void);
-static bool jtag_sanity_check(void);
+static bool jtag_read_irs(jtag_iface_driver_s *driver);
+static bool jtag_sanity_check(jtag_iface_driver_s *driver);
 
 #if CONFIG_BMDA == 0
 void jtag_add_device(const uint32_t dev_index, const jtag_dev_s *jtag_dev)
@@ -74,8 +74,11 @@ void jtag_add_device(const uint32_t dev_index, const jtag_dev_s *jtag_dev)
  * and inspection. Finally, we loop through seeing if we understand any of the
  * ID codes seen and dispatching to suitable handlers if we do.
  */
-bool jtag_scan(void)
+bool jtag_scan(void *const driver_storage, const uint32_t id)
 {
+	(void)id; /* Unused, we always scan the complete chain for now */
+	jtag_iface_driver_s *const driver = (jtag_iface_driver_s *)driver_storage;
+
 	/* Free the device list if any, and clean state ready */
 	target_list_free();
 
@@ -83,35 +86,26 @@ bool jtag_scan(void)
 	memset(&jtag_devs, 0, sizeof(jtag_devs));
 
 	/*
-	 * Initialise the JTAG backend if it's not already
-	 * This will automatically do the SWD-to-JTAG sequence just in case we've got
+	 * The JTAG backend has already been initialised by the time we get here.
+	 * The initialization will automatically do the SWD-to-JTAG sequence just in case we've got
 	 * any SWD/JTAG DPs in the chain
 	 */
-	DEBUG_INFO("Resetting TAP\n");
-#if CONFIG_BMDA == 1
-	if (!bmda_jtag_init()) {
-		DEBUG_ERROR("JTAG not available\n");
-		return false;
-	}
-#else
-	jtagtap_init();
-#endif
 
 	/* Reset the chain ready */
-	jtag_proc.jtagtap_reset();
+	driver->jtagtap_reset();
 	/* Start by reading out the ID Codes for all the devices on the chain */
-	if (!jtag_read_idcodes() ||
+	if (!jtag_read_idcodes(driver) ||
 		/* Otherwise, try and learn the chain IR lengths */
-		!jtag_read_irs())
+		!jtag_read_irs(driver))
 		return false;
 
 	/* IRs are all successfully accounted for, so clean up and do housekeeping */
 	DEBUG_INFO("Return to Run-Test/Idle\n");
-	jtag_proc.jtagtap_next(true, true);
-	jtagtap_return_idle(1);
+	driver->jtagtap_next(true, true);
+	driver->jtagtap_return_idle(1);
 
 	/* All devices should be in BYPASS now so do the sanity check */
-	if (!jtag_sanity_check())
+	if (!jtag_sanity_check(driver))
 		return false;
 
 	/* Fill in the ir_postscan fields */
@@ -148,7 +142,7 @@ bool jtag_scan(void)
 			if ((jtag_devs[device].jd_idcode & dev_descr[descr].idmask) == dev_descr[descr].idcode) {
 				/* Call handler to initialise/probe device further */
 				if (dev_descr[descr].handler)
-					dev_descr[descr].handler(device);
+					dev_descr[descr].handler(driver, device);
 				break;
 			}
 		}
@@ -157,11 +151,11 @@ bool jtag_scan(void)
 	return jtag_dev_count > 0;
 }
 
-static bool jtag_read_idcodes(void)
+static bool jtag_read_idcodes(jtag_iface_driver_s *const driver)
 {
 	/* Transition to Shift-DR */
 	DEBUG_INFO("Change state to Shift-DR\n");
-	jtagtap_shift_dr();
+	driver->jtagtap_shift_dr();
 
 	DEBUG_INFO("Scanning out ID codes\n");
 	size_t device = 0;
@@ -169,7 +163,7 @@ static bool jtag_read_idcodes(void)
 	for (; device <= JTAG_MAX_DEVS; ++device) {
 		/* Try to read out 32 bits, while shifting in 1's */
 		uint32_t idcode = 0;
-		jtag_proc.jtagtap_tdi_tdo_seq((uint8_t *)&idcode, false, ones, 32);
+		driver->jtagtap_tdi_tdo_seq((uint8_t *)&idcode, false, ones, 32);
 		/* If the IDCode read is all 1's, we've reached the end */
 		if (idcode == 0xffffffffU)
 			break;
@@ -185,8 +179,8 @@ static bool jtag_read_idcodes(void)
 
 	/* Well, it worked, so clean up and do housekeeping */
 	DEBUG_INFO("Return to Run-Test/Idle\n");
-	jtag_proc.jtagtap_next(true, true);
-	jtagtap_return_idle(1);
+	driver->jtagtap_next(true, true);
+	driver->jtagtap_return_idle(1);
 	jtag_dev_count = device;
 	return true;
 }
@@ -217,11 +211,11 @@ static jtag_ir_quirks_s jtag_device_get_quirks(const uint32_t idcode)
 	return (jtag_ir_quirks_s){0};
 }
 
-static bool jtag_read_irs(void)
+static bool jtag_read_irs(jtag_iface_driver_s *const driver)
 {
 	/* Transition to Shift-IR */
 	DEBUG_INFO("Change state to Shift-IR\n");
-	jtagtap_shift_ir();
+	driver->jtagtap_shift_ir();
 
 	DEBUG_INFO("Scanning out IRs\n");
 	/* Start with no prescan and the first device */
@@ -234,7 +228,7 @@ static bool jtag_read_irs(void)
 	/* Try scanning out the IR for the device */
 	while (ir_len <= JTAG_MAX_IR_LEN) {
 		/* Read the next IR bit */
-		const bool next_bit = jtag_proc.jtagtap_next(false, true);
+		const bool next_bit = driver->jtagtap_next(false, true);
 		/* If we have quirks, validate the bit against the expected IR */
 		if (ir_quirks.ir_length && ((ir_quirks.ir_value >> ir_len) & 1U) != next_bit) {
 			DEBUG_ERROR("jtag_scan: IR does not match the expected value, bailing out\n");
@@ -285,15 +279,15 @@ static bool jtag_read_irs(void)
 	return true;
 }
 
-static bool jtag_sanity_check(void)
+static bool jtag_sanity_check(jtag_iface_driver_s *const driver)
 {
 	/* Transition to Shift-DR */
 	DEBUG_INFO("Change state to Shift-DR\n");
-	jtagtap_shift_dr();
+	driver->jtagtap_shift_dr();
 	/* Count devices on chain */
 	size_t device = 0;
 	for (; device <= jtag_dev_count; ++device) {
-		if (jtag_proc.jtagtap_next(false, true))
+		if (driver->jtagtap_next(false, true))
 			break;
 		/* Configure the DR pre/post scan values */
 		jtag_devs[device].dr_prescan = device;
@@ -309,13 +303,13 @@ static bool jtag_sanity_check(void)
 
 	/* Everything's accounted for, so clean up */
 	DEBUG_INFO("Return to Run-Test/Idle\n");
-	jtag_proc.jtagtap_next(true, true);
-	jtagtap_return_idle(1);
+	driver->jtagtap_next(true, true);
+	driver->jtagtap_return_idle(1);
 	/* Return if there are any devices on the scan chain */
 	return jtag_dev_count;
 }
 
-void jtag_dev_write_ir(const uint8_t dev_index, const uint32_t ir)
+void jtag_dev_write_ir(jtag_iface_driver_s *const driver, const uint8_t dev_index, const uint32_t ir)
 {
 	jtag_dev_s *const device = &jtag_devs[dev_index];
 	/* If the request would duplicate work already done, do nothing */
@@ -329,32 +323,32 @@ void jtag_dev_write_ir(const uint8_t dev_index, const uint32_t ir)
 	device->current_ir = ir;
 
 	/* Do the work to make the scanchain match the jtag_devs state */
-	jtagtap_shift_ir();
+	driver->jtagtap_shift_ir();
 	/* Once in Shift-IR, clock out 1's till we hit the right device in the chain */
-	jtag_proc.jtagtap_tdi_seq(false, ones, device->ir_prescan);
+	driver->jtagtap_tdi_seq(false, ones, device->ir_prescan);
 	/* Then clock out the new IR value and drop into Exit1-IR on the last cycle if we're the last device */
-	jtag_proc.jtagtap_tdi_seq(!device->ir_postscan, (const uint8_t *)&ir, device->ir_len);
+	driver->jtagtap_tdi_seq(!device->ir_postscan, (const uint8_t *)&ir, device->ir_len);
 	/* Make sure we're in Exit1-IR having clocked out 1's for any more devices on the chain */
-	jtag_proc.jtagtap_tdi_seq(true, ones, device->ir_postscan);
+	driver->jtagtap_tdi_seq(true, ones, device->ir_postscan);
 	/* Now go through Update-IR and back to Idle */
-	jtagtap_return_idle(1);
+	driver->jtagtap_return_idle(1);
 }
 
-void jtag_dev_shift_dr(
-	const uint8_t dev_index, uint8_t *const data_out, const uint8_t *const data_in, const size_t clock_cycles)
+void jtag_dev_shift_dr(jtag_iface_driver_s *const driver, const uint8_t dev_index, uint8_t *const data_out,
+	const uint8_t *const data_in, const size_t clock_cycles)
 {
 	const jtag_dev_s *const device = &jtag_devs[dev_index];
 	/* Switch into Shift-DR */
-	jtagtap_shift_dr();
+	driver->jtagtap_shift_dr();
 	/* Now we're in Shift-DR, clock out 1's till we hit the right device in the chain */
-	jtag_proc.jtagtap_tdi_seq(false, ones, device->dr_prescan);
+	driver->jtagtap_tdi_seq(false, ones, device->dr_prescan);
 	/* Now clock out the new DR value and get the response */
 	if (data_out)
-		jtag_proc.jtagtap_tdi_tdo_seq(data_out, !device->dr_postscan, data_in, clock_cycles);
+		driver->jtagtap_tdi_tdo_seq(data_out, !device->dr_postscan, data_in, clock_cycles);
 	else
-		jtag_proc.jtagtap_tdi_seq(!device->dr_postscan, data_in, clock_cycles);
+		driver->jtagtap_tdi_seq(!device->dr_postscan, data_in, clock_cycles);
 	/* Make sure we're in Exit1-DR having clocked out 1's for any more devices on the chain */
-	jtag_proc.jtagtap_tdi_seq(true, ones, device->dr_postscan);
+	driver->jtagtap_tdi_seq(true, ones, device->dr_postscan);
 	/* Now go through Update-DR and back to Idle */
-	jtagtap_return_idle(1);
+	driver->jtagtap_return_idle(1);
 }

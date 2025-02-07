@@ -25,6 +25,7 @@
 #include "target.h"
 #include "bmp_remote.h"
 #include "hex_utils.h"
+#include "interface.h"
 
 #include "remote/protocol_v0.h"
 #include "remote/protocol_v1.h"
@@ -108,6 +109,9 @@ bool remote_init(const bool power_up)
 
 	/* Finally, power the target up having selected remote routines to use */
 	remote_target_set_power(power_up);
+
+	remote_jtag_register(); /* Register JTAG interface */
+
 	return true;
 }
 
@@ -196,9 +200,13 @@ void remote_target_clk_output_enable(const bool enable)
 		DEBUG_WARN("Please update probe firmware to enable high impedance clock feature\n");
 }
 
-bool remote_jtag_init(void)
+bool remote_jtag_register(void)
 {
-	return remote_funcs.jtag_init();
+	interface_s *const iface = interface_register_driver_type("jtag", jtag_iface_driver_s);
+	if (iface == NULL)
+		return false;
+	remote_funcs.jtag_iface_init(iface);
+	return true;
 }
 
 bool remote_swd_init(void)

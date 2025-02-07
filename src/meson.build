@@ -41,6 +41,7 @@ libbmd_core_sources = files(
 	'gdb_main.c',
 	'gdb_packet.c',
 	'hex_utils.c',
+	'interface.c',
 	'llist.c',
 	'main.c',
 	'maths_utils.c',

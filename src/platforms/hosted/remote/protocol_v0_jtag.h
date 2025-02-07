@@ -38,6 +38,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+bool remote_v0_jtag_init(void *driver);
 void remote_v0_jtag_reset(void);
 void remote_v0_jtag_tms_seq(uint32_t tms_states, size_t clock_cycles);
 void remote_v0_jtag_tdi_tdo_seq(uint8_t *data_out, bool final_tms, const uint8_t *data_in, size_t clock_cycles);

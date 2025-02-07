@@ -30,12 +30,13 @@
 #include "riscv_debug.h"
 #include "target.h"
 #include "target_internal.h"
+#include "interface.h"
 
 #define REMOTE_MAX_MSG_SIZE 1024U
 
 typedef struct bmp_remote_protocol {
 	bool (*swd_init)(void);
-	bool (*jtag_init)(void);
+	void (*jtag_iface_init)(interface_s *iface);
 	bool (*adiv5_init)(adiv5_debug_port_s *dp);
 	bool (*adiv6_init)(adiv5_debug_port_s *dp);
 	bool (*riscv_jtag_init)(riscv_dmi_s *dmi);
@@ -52,7 +53,7 @@ int platform_buffer_read(void *data, size_t size);
 
 bool remote_init(bool power_up);
 bool remote_swd_init(void);
-bool remote_jtag_init(void);
+bool remote_jtag_register(void);
 bool remote_target_get_power(void);
 const char *remote_target_voltage(void);
 bool remote_target_set_power(bool power);

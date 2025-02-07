@@ -63,7 +63,7 @@ bool remote_v4_init(void)
 	/* Fill in the base set that will always be available */
 	remote_funcs = (bmp_remote_protocol_s){
 		.swd_init = remote_v0_swd_init,
-		.jtag_init = remote_v2_jtag_init,
+		.jtag_iface_init = remote_v2_jtag_iface_init,
 		.add_jtag_dev = remote_v1_add_jtag_dev,
 		.get_comms_frequency = remote_v2_get_comms_frequency,
 		.set_comms_frequency = remote_v2_set_comms_frequency,

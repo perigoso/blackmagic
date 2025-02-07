@@ -35,6 +35,7 @@
 #include "morse.h"
 #include "version.h"
 #include "jtagtap.h"
+#include "interface.h"
 
 #if CONFIG_BMDA == 0
 #include "jtag_scan.h"
@@ -249,16 +250,18 @@ static bool cmd_jtag_scan(target_s *target, int argc, const char **argv)
 
 	gdb_outf("Target voltage: %s\n", platform_target_voltage());
 
+	interface_s *const jtag_iface = interface_get("jtag");
+	if (!jtag_iface) {
+		gdb_out("No JTAG interface available!\n");
+		return false;
+	}
+
 	if (connect_assert_nrst)
 		platform_nrst_set_val(true); /* will be deasserted after attach */
 
 	bool scan_result = false;
 	TRY (EXCEPTION_ALL) {
-#if CONFIG_BMDA == 1
-		scan_result = bmda_jtag_scan();
-#else
-		scan_result = jtag_scan();
-#endif
+		scan_result = interface_scan(jtag_iface, 0U);
 	}
 	CATCH () {
 	case EXCEPTION_TIMEOUT:
@@ -388,7 +391,6 @@ bool cmd_auto_scan(target_s *target, int argc, const char **argv)
 #if CONFIG_BMDA == 1
 	/* clang-format off */
 	{
-		{bmda_jtag_scan, "JTAG"},
 		{bmda_swd_scan, "SWD"},
 #if defined(CONFIG_RVSWD) && defined(PLATFORM_HAS_RVSWD)
 		{bmda_rvswd_scan, "RVSWD"},
@@ -396,7 +398,6 @@ bool cmd_auto_scan(target_s *target, int argc, const char **argv)
 	};
 #else
 	{
-		{jtag_scan, "JTAG"},
 		{adiv5_swd_scan, "SWD"},
 	};
 	/* clang-format on */
@@ -570,9 +571,15 @@ static bool cmd_tdi_low_reset(target_s *target, int argc, const char **argv)
 	(void)target;
 	(void)argc;
 	(void)argv;
-	if (!jtag_proc.jtagtap_next)
+
+	/* Get the JTAG interface driver, if it exists */
+	jtag_iface_driver_s *const jtag_driver = interface_get_driver("jtag");
+	if (!jtag_driver)
 		return false;
-	jtag_proc.jtagtap_next(true, false);
+	if (!jtag_driver->jtagtap_next)
+		return false; /* No jtagtap_next method available */
+	jtag_driver->jtagtap_next(true, false);
+
 	cmd_reset(NULL, 0, NULL);
 	return true;
 }

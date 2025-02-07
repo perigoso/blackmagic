@@ -44,7 +44,7 @@ void remote_v3_init(void)
 {
 	remote_funcs = (bmp_remote_protocol_s){
 		.swd_init = remote_v0_swd_init,
-		.jtag_init = remote_v2_jtag_init,
+		.jtag_iface_init = remote_v2_jtag_iface_init,
 		.adiv5_init = remote_v3_adiv5_init,
 		.add_jtag_dev = remote_v1_add_jtag_dev,
 		.get_comms_frequency = remote_v2_get_comms_frequency,

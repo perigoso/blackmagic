@@ -355,6 +355,7 @@ bool dap_init(bool allow_fallback)
 	if (strcmp(bmda_probe_info.product, "Orbtrace") == 0)
 		dap_quirks |= DAP_QUIRK_NEEDS_EXTRA_ZLP_READ;
 
+	dap_jtag_register(); /* Register JTAG interface */
 	return true;
 }
 

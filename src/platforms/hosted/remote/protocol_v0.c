@@ -34,6 +34,7 @@
 #include "bmp_remote.h"
 #include "swd.h"
 #include "jtagtap.h"
+#include "interface.h"
 
 #include "protocol_v0.h"
 #include "protocol_v0_defs.h"
@@ -49,7 +50,7 @@ void remote_v0_init(void)
 	DEBUG_WARN("Probe firmware does not support the newer JTAG commands or ADIv5 acceleration, please update it.\n");
 	remote_funcs = (bmp_remote_protocol_s){
 		.swd_init = remote_v0_swd_init,
-		.jtag_init = remote_v0_jtag_init,
+		.jtag_iface_init = remote_v0_jtag_iface_init,
 		.adiv5_init = remote_v0_adiv5_init,
 	};
 }
@@ -59,7 +60,7 @@ void remote_v0_plus_init(void)
 	DEBUG_WARN("Probe firmware does not support the newer JTAG commands or ADIv5 acceleration, please update it.\n");
 	remote_funcs = (bmp_remote_protocol_s){
 		.swd_init = remote_v0_swd_init,
-		.jtag_init = remote_v0_jtag_init,
+		.jtag_iface_init = remote_v0_jtag_iface_init,
 		.adiv5_init = remote_v0_plus_adiv5_init,
 	};
 }
@@ -83,8 +84,25 @@ bool remote_v0_swd_init(void)
 	return true;
 }
 
-bool remote_v0_jtag_init(void)
+void remote_v0_jtag_iface_init(interface_s *const iface)
 {
+	jtag_iface_driver_s *const driver = (jtag_iface_driver_s *)iface->driver;
+	driver->jtagtap_reset = remote_v0_jtag_reset;
+	driver->jtagtap_next = remote_v0_jtag_next;
+	driver->jtagtap_tms_seq = remote_v0_jtag_tms_seq;
+	driver->jtagtap_tdi_tdo_seq = remote_v0_jtag_tdi_tdo_seq;
+	driver->jtagtap_tdi_seq = remote_v0_jtag_tdi_seq;
+	driver->jtagtap_cycle = remote_v0_jtag_cycle;
+	driver->tap_idle_cycles = 1;
+
+	iface->init = remote_v0_jtag_init;
+
+	iface->scan = jtag_scan;
+}
+
+bool remote_v0_jtag_init(void *const driver)
+{
+	(void)driver;
 	DEBUG_PROBE("remote_jtag_init\n");
 	platform_buffer_write(REMOTE_JTAG_INIT_STR, sizeof(REMOTE_JTAG_INIT_STR));
 
@@ -94,14 +112,6 @@ bool remote_v0_jtag_init(void)
 		DEBUG_ERROR("remote_jtag_init failed, error %s\n", length ? buffer + 1 : "unknown");
 		return false;
 	}
-
-	jtag_proc.jtagtap_reset = remote_v0_jtag_reset;
-	jtag_proc.jtagtap_next = remote_v0_jtag_next;
-	jtag_proc.jtagtap_tms_seq = remote_v0_jtag_tms_seq;
-	jtag_proc.jtagtap_tdi_tdo_seq = remote_v0_jtag_tdi_tdo_seq;
-	jtag_proc.jtagtap_tdi_seq = remote_v0_jtag_tdi_seq;
-	jtag_proc.jtagtap_cycle = remote_v0_jtag_cycle;
-	jtag_proc.tap_idle_cycles = 1;
 	return true;
 }
 

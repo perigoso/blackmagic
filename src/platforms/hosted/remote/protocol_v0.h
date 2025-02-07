@@ -35,11 +35,12 @@
 #define PLATFORMS_HOSTED_REMOTE_PROTOCOL_V0_H
 
 #include <stdbool.h>
+#include "interface.h"
 
 void remote_v0_init(void);
 void remote_v0_plus_init(void);
 
 bool remote_v0_swd_init(void);
-bool remote_v0_jtag_init(void);
+void remote_v0_jtag_iface_init(interface_s *iface);
 
 #endif /*PLATFORMS_HOSTED_REMOTE_PROTOCOL_V0_H*/

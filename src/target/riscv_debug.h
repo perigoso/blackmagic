@@ -116,6 +116,8 @@ struct riscv_dmi {
 	uint8_t address_width;
 	uint8_t fault;
 
+	void *iface_driver;
+
 	void (*prepare)(target_s *target);
 	void (*quiesce)(target_s *target);
 	bool (*read)(riscv_dmi_s *dmi, uint32_t address, uint32_t *value);
@@ -295,7 +297,7 @@ typedef struct riscv_hart {
 
 /* JTAG DTM function declarations */
 #ifdef CONFIG_RISCV
-void riscv_jtag_dtm_handler(uint8_t dev_index);
+void riscv_jtag_dtm_handler(void *driver, uint8_t dev_index);
 void riscv_adi_dtm_handler(adiv5_access_port_s *ap);
 #endif
 bool riscv_jtag_dmi_read(riscv_dmi_s *dmi, uint32_t address, uint32_t *value);

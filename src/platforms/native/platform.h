@@ -343,25 +343,25 @@ void swo_dma_isr(void);
 /*
  * The 3 major JTAG bitbanging routines that get called result in these stats for
  * clock frequency being generated with the _no_delay routines:
- * jtag_proc.jtagtap_next(): 705.882kHz
- * jtag_proc.jtagtap_tms_seq(): 4.4MHz
- * jtag_proc.jtagtap_tdi_tdo_seq(): 750kHz
+ * jtagtap_next(): 705.882kHz
+ * jtagtap_tms_seq(): 4.4MHz
+ * jtagtap_tdi_tdo_seq(): 750kHz
  * The result is an average 1.95MHz achieved.
  */
 #define BITBANG_NO_DELAY_FREQ 1951961U
 /*
  * On the _swd_delay routines with the delay loops inoperative, we then get:
- * jtag_proc.jtagtap_next(): 626.181kHz
- * jtag_proc.jtagtap_tms_seq(): 2.8MHz
- * jtag_proc.jtagtap_tdi_tdo_seq(): 727.27kHz
+ * jtagtap_next(): 626.181kHz
+ * jtagtap_tms_seq(): 2.8MHz
+ * jtagtap_tdi_tdo_seq(): 727.27kHz
  * The result is an average 1.38MHz achieved.
  */
 #define BITBANG_0_DELAY_FREQ 1384484U
 /*
  * On the _swd_delay routines with the delay set to 1, we then get:
- * jtag_proc.jtagtap_next(): 521.739kHz
- * jtag_proc.jtagtap_tms_seq(): 1.378MHz
- * jtag_proc.jtagtap_tdi_tdo_seq(): 583.624kHz
+ * jtagtap_next(): 521.739kHz
+ * jtagtap_tms_seq(): 1.378MHz
+ * jtagtap_tdi_tdo_seq(): 583.624kHz
  * The result is an average 827.788kHz achieved
  */
 

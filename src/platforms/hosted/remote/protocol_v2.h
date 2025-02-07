@@ -36,10 +36,11 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "interface.h"
 
 void remote_v2_init(void);
 
-bool remote_v2_jtag_init(void);
+void remote_v2_jtag_iface_init(interface_s *iface);
 
 uint32_t remote_v2_get_comms_frequency(void);
 bool remote_v2_set_comms_frequency(uint32_t freq);

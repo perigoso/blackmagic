@@ -33,6 +33,7 @@
 
 #include "bmp_remote.h"
 #include "hex_utils.h"
+#include "jtagtap.h"
 
 #include "protocol_v0.h"
 #include "protocol_v0_jtag.h"
@@ -46,7 +47,7 @@ void remote_v2_init(void)
 {
 	remote_funcs = (bmp_remote_protocol_s){
 		.swd_init = remote_v0_swd_init,
-		.jtag_init = remote_v2_jtag_init,
+		.jtag_iface_init = remote_v2_jtag_iface_init,
 		.adiv5_init = remote_v1_adiv5_init,
 		.add_jtag_dev = remote_v1_add_jtag_dev,
 		.get_comms_frequency = remote_v2_get_comms_frequency,
@@ -55,26 +56,20 @@ void remote_v2_init(void)
 	};
 }
 
-bool remote_v2_jtag_init(void)
+void remote_v2_jtag_iface_init(interface_s *const iface)
 {
-	DEBUG_PROBE("remote_jtag_init\n");
-	platform_buffer_write(REMOTE_JTAG_INIT_STR, sizeof(REMOTE_JTAG_INIT_STR));
+	jtag_iface_driver_s *const driver = (jtag_iface_driver_s *)iface->driver;
+	driver->jtagtap_reset = remote_v0_jtag_reset;
+	driver->jtagtap_next = remote_v0_jtag_next;
+	driver->jtagtap_tms_seq = remote_v0_jtag_tms_seq;
+	driver->jtagtap_tdi_tdo_seq = remote_v0_jtag_tdi_tdo_seq;
+	driver->jtagtap_tdi_seq = remote_v0_jtag_tdi_seq;
+	driver->jtagtap_cycle = remote_v2_jtag_cycle;
+	driver->tap_idle_cycles = 1;
 
-	char buffer[REMOTE_MAX_MSG_SIZE];
-	const int length = platform_buffer_read(buffer, REMOTE_MAX_MSG_SIZE);
-	if (!length || buffer[0] == REMOTE_RESP_ERR) {
-		DEBUG_ERROR("remote_jtag_init failed, error %s\n", length ? buffer + 1 : "unknown");
-		return false;
-	}
+	iface->init = remote_v0_jtag_init;
 
-	jtag_proc.jtagtap_reset = remote_v0_jtag_reset;
-	jtag_proc.jtagtap_next = remote_v0_jtag_next;
-	jtag_proc.jtagtap_tms_seq = remote_v0_jtag_tms_seq;
-	jtag_proc.jtagtap_tdi_tdo_seq = remote_v0_jtag_tdi_tdo_seq;
-	jtag_proc.jtagtap_tdi_seq = remote_v0_jtag_tdi_seq;
-	jtag_proc.jtagtap_cycle = remote_v2_jtag_cycle;
-	jtag_proc.tap_idle_cycles = 1;
-	return true;
+	iface->scan = jtag_scan;
 }
 
 uint32_t remote_v2_get_comms_frequency(void)

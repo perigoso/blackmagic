@@ -22,22 +22,38 @@
 #include "stlinkv2.h"
 #include "stlinkv2_protocol.h"
 #include "jtag_devs.h"
+#include "interface.h"
 
 #define STLINK_JTAG_MAX_DEVS 2U
 
-static bool stlink_enter_debug_jtag(void);
+static bool stlink_jtag_scan(void *driver, uint32_t id);
+static bool stlink_enter_debug_jtag(void *driver);
 static size_t stlink_read_idcodes(uint32_t *idcodes);
 static uint32_t stlink_jtag_adiv5_dp_read(adiv5_debug_port_s *dp, uint16_t addr);
 
-bool stlink_jtag_scan(void)
+bool stlink_jtag_register(void)
 {
+	interface_s *const iface = interface_register_driver("jtag", 0U);
+	if (iface == NULL)
+		return false;
+
+	iface->init = stlink_enter_debug_jtag;
+
+	iface->scan = stlink_jtag_scan;
+
+	return true;
+}
+
+static bool stlink_jtag_scan(void *const driver, const uint32_t id)
+{
+	(void)driver;
+	(void)id;
+
 	uint32_t idcodes[STLINK_JTAG_MAX_DEVS];
 	target_list_free();
 
 	jtag_dev_count = 0;
 	memset(jtag_devs, 0, sizeof(jtag_devs));
-	if (!stlink_enter_debug_jtag())
-		return false;
 	jtag_dev_count = stlink_read_idcodes(idcodes);
 	/* Check for known devices and handle accordingly */
 	for (uint32_t i = 0; i < jtag_dev_count; ++i)
@@ -47,7 +63,7 @@ bool stlink_jtag_scan(void)
 		for (size_t j = 0; dev_descr[j].idcode; ++j) {
 			if ((jtag_devs[i].jd_idcode & dev_descr[j].idmask) == dev_descr[j].idcode) {
 				if (dev_descr[j].handler)
-					dev_descr[j].handler(i);
+					dev_descr[j].handler(NULL, i);
 				break;
 			}
 		}
@@ -55,8 +71,9 @@ bool stlink_jtag_scan(void)
 	return jtag_dev_count > 0;
 }
 
-static bool stlink_enter_debug_jtag(void)
+static bool stlink_enter_debug_jtag(void *const driver)
 {
+	(void)driver;
 	stlink_leave_state();
 	uint8_t data[2];
 	stlink_simple_request(

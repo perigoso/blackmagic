@@ -637,6 +637,7 @@ bool jlink_init(void)
 		return false;
 	}
 	memcpy(bmda_probe_info.version, jlink.fw_version, strlen(jlink.fw_version) + 1U);
+	jlink_jtag_register(); /* Register JTAG commands */
 	return true;
 }
 

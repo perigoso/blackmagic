@@ -563,6 +563,7 @@ bool ftdi_bmp_init(bmda_cli_options_s *const cl_opts)
 			DEBUG_WARN(" %02x", ftdi_init[i]);
 		DEBUG_WARN("\n");
 	}
+	ftdi_jtag_register(); /* Register JTAG interface */
 	return true;
 
 error_2:

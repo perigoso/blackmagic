@@ -236,6 +236,9 @@ struct adiv5_debug_port {
 
 	/* DPv3+ bus address width */
 	uint8_t address_width;
+
+	/* Interface driver for the DP */
+	void *iface_driver;
 };
 
 struct adiv5_access_port {

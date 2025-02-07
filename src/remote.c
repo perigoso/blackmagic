@@ -28,6 +28,7 @@
 #include "gdb_main.h"
 #include "gdb_packet.h"
 #include "gdb_if.h"
+#include "interface.h"
 #include "jtagtap.h"
 #include "swd.h"
 #include "spi.h"
@@ -184,6 +185,13 @@ static void remote_packet_process_swd(const char *const packet, const size_t pac
 
 static void remote_packet_process_jtag(const char *const packet, const size_t packet_len)
 {
+	interface_s *const jtag_iface = interface_get("jtag");
+	if (jtag_iface == NULL) {
+		remote_respond(REMOTE_RESP_ERR, REMOTE_ERROR_UNRECOGNISED);
+		return;
+	}
+	jtag_iface_driver_s *const jtag_driver = (jtag_iface_driver_s *)jtag_iface->driver;
+
 	switch (packet[1]) {
 	case REMOTE_INIT: /* JS = initialise ============================= */
 		remote_dp.write_no_check = NULL;
@@ -192,12 +200,12 @@ static void remote_packet_process_jtag(const char *const packet, const size_t pa
 		remote_dp.error = adiv5_jtag_clear_error;
 		remote_dp.low_access = adiv5_jtag_raw_access;
 		remote_dp.abort = adiv5_jtag_abort;
-		jtagtap_init();
+		interface_init(jtag_iface);
 		remote_respond(REMOTE_RESP_OK, 0);
 		break;
 
 	case REMOTE_RESET: /* JR = reset ================================= */
-		jtag_proc.jtagtap_reset();
+		jtag_driver->jtagtap_reset();
 		remote_respond(REMOTE_RESP_OK, 0);
 		break;
 
@@ -208,7 +216,7 @@ static void remote_packet_process_jtag(const char *const packet, const size_t pa
 		if (packet_len < 4U)
 			remote_respond(REMOTE_RESP_ERR, REMOTE_ERROR_WRONGLEN);
 		else {
-			jtag_proc.jtagtap_tms_seq(tms_states, clock_cycles);
+			jtag_driver->jtagtap_tms_seq(tms_states, clock_cycles);
 			remote_respond(REMOTE_RESP_OK, 0);
 		}
 		break;
@@ -218,7 +226,7 @@ static void remote_packet_process_jtag(const char *const packet, const size_t pa
 		const size_t clock_cycles = hex_string_to_num(8, packet + 4);
 		const bool tms = packet[2] != '0';
 		const bool tdi = packet[3] != '0';
-		jtag_proc.jtagtap_cycle(tms, tdi, clock_cycles);
+		jtag_driver->jtagtap_cycle(tms, tdi, clock_cycles);
 		remote_respond(REMOTE_RESP_OK, 0);
 		break;
 	}
@@ -231,7 +239,7 @@ static void remote_packet_process_jtag(const char *const packet, const size_t pa
 			const size_t clock_cycles = hex_string_to_num(2, packet + 2);
 			const uint64_t data_in = hex_string_to_num(-1, packet + 4);
 			uint64_t data_out = 0;
-			jtag_proc.jtagtap_tdi_tdo_seq(
+			jtag_driver->jtagtap_tdi_tdo_seq(
 				(uint8_t *)&data_out, packet[1] == REMOTE_TDITDO_TMS, (const uint8_t *)&data_in, clock_cycles);
 
 			remote_respond(REMOTE_RESP_OK, data_out);
@@ -243,7 +251,7 @@ static void remote_packet_process_jtag(const char *const packet, const size_t pa
 		if (packet_len != 4U)
 			remote_respond(REMOTE_RESP_ERR, REMOTE_ERROR_WRONGLEN);
 		else {
-			const bool tdo = jtag_proc.jtagtap_next(packet[2] == '1', packet[3] == '1');
+			const bool tdo = jtag_driver->jtagtap_next(packet[2] == '1', packet[3] == '1');
 			remote_respond(REMOTE_RESP_OK, tdo ? 1U : 0U);
 		}
 		break;

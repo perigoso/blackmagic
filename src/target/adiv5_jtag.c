@@ -41,13 +41,15 @@
 #define IR_DPACC 0xaU
 #define IR_APACC 0xbU
 
-void adiv5_jtag_dp_handler(const uint8_t dev_index)
+void adiv5_jtag_dp_handler(void *const driver, const uint8_t dev_index)
 {
 	adiv5_debug_port_s *dp = calloc(1, sizeof(*dp));
 	if (!dp) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
 		return;
 	}
+
+	dp->iface_driver = driver;
 
 	dp->dev_index = dev_index;
 
@@ -123,14 +125,14 @@ uint32_t adiv5_jtag_raw_access(
 	uint8_t ack;
 
 	/* Set the instruction to the correct one for the kind of access needed */
-	jtag_dev_write_ir(dp->dev_index, (addr & ADIV5_APnDP) ? IR_APACC : IR_DPACC);
+	jtag_dev_write_ir(dp->iface_driver, dp->dev_index, (addr & ADIV5_APnDP) ? IR_APACC : IR_DPACC);
 
 	platform_timeout_s timeout;
 	platform_timeout_set(&timeout, 250);
 	do {
 		uint64_t response;
 		/* Send the request and see what response we get back */
-		jtag_dev_shift_dr(dp->dev_index, (uint8_t *)&response, (const uint8_t *)&request, 35);
+		jtag_dev_shift_dr(dp->iface_driver, dp->dev_index, (uint8_t *)&response, (const uint8_t *)&request, 35);
 		/* Extract the data portion of the response */
 		result = (uint32_t)(response >> 3U);
 		/* Then the acknowledgement code */
@@ -165,13 +167,13 @@ uint32_t adiv5_jtag_raw_access(
 
 	/* ADIv6 needs 8 idle cycles run after we get done to ensure the state machine is idle */
 	if (dp->version > 2)
-		jtag_proc.jtagtap_cycle(false, false, 8);
+		((jtag_iface_driver_s *)dp->iface_driver)->jtagtap_cycle(false, false, 8);
 	return result;
 }
 
 void adiv5_jtag_abort(adiv5_debug_port_s *dp, uint32_t abort)
 {
 	uint64_t request = (uint64_t)abort << 3U;
-	jtag_dev_write_ir(dp->dev_index, IR_ABORT);
-	jtag_dev_shift_dr(dp->dev_index, NULL, (const uint8_t *)&request, 35);
+	jtag_dev_write_ir(dp->iface_driver, dp->dev_index, IR_ABORT);
+	jtag_dev_shift_dr(dp->iface_driver, dp->dev_index, NULL, (const uint8_t *)&request, 35);
 }

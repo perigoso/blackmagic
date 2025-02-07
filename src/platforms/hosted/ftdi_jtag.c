@@ -28,6 +28,10 @@
 #endif
 #include <ftdi.h>
 #include "ftdi_bmp.h"
+#include "interface.h"
+#include "jtagtap.h"
+
+static bool ftdi_jtag_init(void *driver);
 
 static void ftdi_jtag_reset(void);
 static void ftdi_jtag_tms_seq(uint32_t tms_states, size_t clock_cycles);
@@ -54,7 +58,7 @@ static bool ftdi_jtag_next(bool tms, bool tdi);
  * Each command block is allowed to handle at most 7 clock cycles - why not 8 is undocumented.
  */
 
-void ftdi_jtag_drain_potential_garbage(void)
+static void ftdi_jtag_drain_potential_garbage(void)
 {
 	uint8_t data[16];
 	int garbage = ftdi_read_data(bmda_probe_info.ftdi_ctx, data, sizeof(data));
@@ -66,19 +70,35 @@ void ftdi_jtag_drain_potential_garbage(void)
 	}
 }
 
-bool ftdi_jtag_init(void)
+bool ftdi_jtag_register(void)
 {
 	if (active_cable.mpsse_swd_read.set_data_low == MPSSE_DO && active_cable.mpsse_swd_write.set_data_low == MPSSE_DO) {
 		DEBUG_ERROR("JTAG not possible with resistor SWD!\n");
 		return false;
 	}
 
-	jtag_proc.jtagtap_reset = ftdi_jtag_reset;
-	jtag_proc.jtagtap_next = ftdi_jtag_next;
-	jtag_proc.jtagtap_tms_seq = ftdi_jtag_tms_seq;
-	jtag_proc.jtagtap_tdi_tdo_seq = ftdi_jtag_tdi_tdo_seq;
-	jtag_proc.jtagtap_tdi_seq = ftdi_jtag_tdi_seq;
-	jtag_proc.tap_idle_cycles = 1;
+	interface_s *const iface = interface_register_driver_type("jtag", jtag_iface_driver_s);
+	if (iface == NULL)
+		return false;
+
+	jtag_iface_driver_s *const driver = (jtag_iface_driver_s *)iface->driver;
+	driver->jtagtap_reset = ftdi_jtag_reset;
+	driver->jtagtap_next = ftdi_jtag_next;
+	driver->jtagtap_tms_seq = ftdi_jtag_tms_seq;
+	driver->jtagtap_tdi_tdo_seq = ftdi_jtag_tdi_tdo_seq;
+	driver->jtagtap_tdi_seq = ftdi_jtag_tdi_seq;
+	driver->tap_idle_cycles = 1;
+
+	iface->init = ftdi_jtag_init;
+
+	iface->scan = jtag_scan;
+
+	return true;
+}
+
+static bool ftdi_jtag_init(void *const driver)
+{
+	(void)driver;
 
 	active_state.data[0] |= active_cable.jtag.set_data_low | MPSSE_CS | MPSSE_DI | MPSSE_DO;
 	active_state.data[0] &= ~(active_cable.jtag.clr_data_low | MPSSE_SK);
@@ -111,7 +131,9 @@ bool ftdi_jtag_init(void)
 
 static void ftdi_jtag_reset(void)
 {
+#define jtagtap_tms_seq ftdi_jtag_tms_seq
 	jtagtap_soft_reset();
+#undef jtagtap_tms_seq
 }
 
 static void ftdi_jtag_tms_seq(uint32_t tms_states, const size_t clock_cycles)

@@ -1,9 +1,8 @@
 /*
  * This file is part of the Black Magic Debug project.
  *
- * Copyright (C) 2024 1BitSquared <info@1bitsquared.com>
- * Written by OmniTechnoMancer <OmniTechnoMancer@wah.quest>
- * All rights reserved.
+ * Copyright (C) 2025 1BitSquared <info@1bitsquared.com>
+ * Written by Rafael Silva <perigoso@riseup.net>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -31,13 +30,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BMDA_GPIOD_H
-#define BMDA_GPIOD_H
+#ifndef PLATFORMS_COMMON_BITBANG_JTAG_H
+#define PLATFORMS_COMMON_BITBANG_JTAG_H
 
-#include "cli.h"
+#include "interface.h"
 
-bool bmda_gpiod_init(bmda_cli_options_s *const cl_opts);
+bool bitbang_jtag_register(void);
 
-bool bmda_gpiod_swd_init(void);
-
-#endif
+#endif /* PLATFORMS_COMMON_BITBANG_JTAG_H */

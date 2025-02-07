@@ -35,6 +35,10 @@
 #include "dap_command.h"
 #include "jtag_scan.h"
 #include "buffer_utils.h"
+#include "interface.h"
+
+static bool dap_jtag_init(void *driver);
+static void dap_jtag_deinit(void *driver);
 
 static void dap_jtag_reset(void);
 static void dap_jtag_tms_seq(uint32_t tms_states, size_t clock_cycles);
@@ -42,22 +46,40 @@ static void dap_jtag_tdi_tdo_seq(uint8_t *data_out, bool final_tms, const uint8_
 static void dap_jtag_tdi_seq(bool final_tms, const uint8_t *data_in, size_t clock_cycles);
 static bool dap_jtag_next(bool tms, bool tdi);
 
-bool dap_jtag_init(void)
+bool dap_jtag_register(void)
 {
 	/* If we are not able to talk SWD with this adaptor, make this insta-fail */
 	if (!(dap_caps & DAP_CAP_JTAG))
 		return false;
 
+	interface_s *const iface = interface_register_driver_type("jtag", jtag_iface_driver_s);
+	if (iface == NULL)
+		return false;
+
+	jtag_iface_driver_s *const driver = (jtag_iface_driver_s *)iface->driver;
+	driver->jtagtap_reset = dap_jtag_reset;
+	driver->jtagtap_next = dap_jtag_next;
+	driver->jtagtap_tms_seq = dap_jtag_tms_seq;
+	driver->jtagtap_tdi_tdo_seq = dap_jtag_tdi_tdo_seq;
+	driver->jtagtap_tdi_seq = dap_jtag_tdi_seq;
+
+	iface->init = dap_jtag_init;
+	iface->deinit = dap_jtag_deinit;
+
+	iface->scan = jtag_scan;
+
+	return true;
+}
+
+bool dap_jtag_init(void *const driver)
+{
+	(void)driver;
 	DEBUG_PROBE("-> dap_jtag_init()\n");
+
+	/* We might not need to do this, as a deinit should have been called before, or its the first init */
 	dap_disconnect();
 	dap_mode = DAP_CAP_JTAG;
 	dap_connect();
-
-	jtag_proc.jtagtap_reset = dap_jtag_reset;
-	jtag_proc.jtagtap_next = dap_jtag_next;
-	jtag_proc.jtagtap_tms_seq = dap_jtag_tms_seq;
-	jtag_proc.jtagtap_tdi_tdo_seq = dap_jtag_tdi_tdo_seq;
-	jtag_proc.jtagtap_tdi_seq = dap_jtag_tdi_seq;
 
 	/* Ensure we're in JTAG mode */
 	for (size_t i = 0; i <= 50U; ++i)
@@ -67,6 +89,13 @@ bool dap_jtag_init(void)
 	if (dap_quirks & DAP_QUIRK_NO_JTAG_MUTLI_TAP)
 		DEBUG_WARN("Multi-TAP JTAG is broken on this adaptor firmware revision, please upgrade it\n");
 	return true;
+}
+
+void dap_jtag_deinit(void *const driver)
+{
+	(void)driver;
+	DEBUG_PROBE("-> dap_jtag_deinit()\n");
+	dap_disconnect();
 }
 
 void dap_jtag_dp_init(adiv5_debug_port_s *target_dp)
@@ -86,7 +115,9 @@ void dap_jtag_dp_init(adiv5_debug_port_s *target_dp)
 
 static void dap_jtag_reset(void)
 {
+#define jtagtap_tms_seq dap_jtag_tms_seq
 	jtagtap_soft_reset();
+#undef jtagtap_tms_seq
 	/* Is there a way to know if TRST is available?*/
 }
 

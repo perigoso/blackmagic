@@ -473,6 +473,9 @@ bool stlink_init(void)
 	}
 	stlink.apsel = STLINK_INVALID_AP;
 	stlink_reset_adaptor();
+
+	stlink_jtag_register(); /* Register JTAG interface */
+
 	return true;
 }
 

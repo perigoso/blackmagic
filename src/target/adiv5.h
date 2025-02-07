@@ -241,7 +241,7 @@
 #define ADIV5_AP_ACCESS_BANKED (1U << 7U) /* Last AP access was done using the banked interface */
 
 /* JTAG DP discovery handler */
-void adiv5_jtag_dp_handler(uint8_t dev_index);
+void adiv5_jtag_dp_handler(void *driver, uint8_t dev_index);
 
 /* SWD multi-drop DP discovery handler */
 void adiv5_swd_multidrop_scan(adiv5_debug_port_s *dp, uint32_t targetid);
