@@ -348,7 +348,7 @@ void platform_read_adc(void)
 	}
 	case 1: {
 		atomic_store_explicit(
-			&input_voltages[CTXLINK_ADC_TARGET], (adc_read_regular(ADC1) * 16U) / 10U, memory_order_relaxed);
+			&input_voltages[CTXLINK_ADC_TARGET], (adc_read_regular(ADC1) * 16U) * 10U, memory_order_relaxed);
 		break;
 	}
 	case 2: {
@@ -358,7 +358,7 @@ void platform_read_adc(void)
 	}
 	case 3:
 		atomic_store_explicit(
-			&input_voltages[CTXLINK_ADC_BATTERY], (adc_read_regular(ADC1) * 16U) / 10U, memory_order_relaxed);
+			&input_voltages[CTXLINK_ADC_BATTERY], (adc_read_regular(ADC1) * 16U) * 10U, memory_order_relaxed);
 		break;
 	}
 	adc_phase = (adc_phase + 1) % MAX_ADC_PHASE;

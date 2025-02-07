@@ -643,8 +643,8 @@ bool jlink_init(void)
 
 uint32_t jlink_target_voltage_sense(void)
 {
-	/* Convert from mV to dV (deci-Volt, i.e. tenths of a Volt) */
-	return jlink_target_voltage() / 100U;
+	uint16_t millivolts = jlink_target_voltage();
+	return millivolts == UINT16_MAX ? 0U : millivolts;
 }
 
 const char *jlink_target_voltage_string(void)

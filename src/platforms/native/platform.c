@@ -383,6 +383,69 @@ static void adc_init(void)
 	adc_calibrate(ADC1);
 }
 
+/* Reference voltage comes from the 3.3V regulator, this is a variable to allow for calibration */
+// static uint32_t adc_reference = 3300U;
+
+/*
+ * The calculation for the voltage on TPWR for a given ADC value is as follows:
+ * 
+ *                adc_ref_mv
+ * adc_unit_mv = ──────────── (mV per unit of ADC value)
+ *               2 ^ adc_bits
+ *
+ *                 r1 + r2
+ * inv_div_ratio = ─────── (inverse of the voltage divider ratio)
+ *                   r2
+ *
+ * tpwr_unit_mv = adc_unit_mv * inv_div_ratio (TPWR mV per unit of ADC value)
+ *  
+ *                 adc_ref_mv    r1 + r2   adc_ref_mv * (r1 + r2)
+ * tpwr_unit_mv = ──────────── * ─────── = ──────────────────────
+ *                2 ^ adc_bits     r2       (2 ^ adc_bits) * r2
+ *
+ * We additionally shift the dividend by fixed point bits to account for the fractional part
+ * This means that multiplying the ADC value by this value gives us the voltage in mV in fixed point format
+ *
+ * We can shift the result back by the fixed point bits to get an integer value in mV,
+ * but note that this results in a loss of precision, and the result is rounded *down* to the previous integer,
+ * to get rounding to the nearest integer we can add half the fixed point ratio to the value before the shifting
+ * 
+ * The result given by the (SAR) ADC is not exact, it is a possible range between the given value and the next higher value
+ * We can add half the range to the value to get a more accurate result on average
+ * 
+ * We use 18-bit fractional because the remaining 14-bit can represent a voltage up to ~16V in 1mV steps which is more than enough 
+ * 18-bit fractional gives a more accurate result at no cost, we can lose up to 1 bit of precision inherent to the calculation
+ * which is a maximum absolute error of <0.001%
+ */
+#define VOLT_FP_BITS           18U                           /* Number of fractional bits in the fixed point value */
+#define VOLT_FP_MASK           ((1U << (VOLT_FP_BITS)) - 1U) /* Mask for the fractional part of the fixed point value */
+#define VOLT_FP_HALF           (1U << ((VOLT_FP_BITS)-1U))   /* Half of the fixed point ratio value */
+#define VOLT_FP_TO_UINT32(val) (((val) + VOLT_FP_HALF) >> VOLT_FP_BITS) /* Round to nearest integer */
+
+#define VOLT_ADC_RES_BITS 12U                       /* Number of resolution bits in the ADC value, 12-bit */
+#define VOLT_ADC_RES      (1U << VOLT_ADC_RES_BITS) /* Number of ADC values */
+#define VOLT_ADC_REF      3300U /* 3.3V regulator as reference, fixme, this should be a calibrated variable */
+
+#define HW_V2_VOLT_DIV_R1 4700U  /* Bottom resistor value of the voltage divider, 4.7kΩ */
+#define HW_V2_VOLT_DIV_R2 10000U /* Top resistor value of the voltage divider, 10kΩ */
+
+/* Voltage [mV] per unit of ADC value for hardware version 2 and newer */
+#define HW_V2_UNIT_MV \
+	(((VOLT_ADC_REF * (HW_V2_VOLT_DIV_R1 + HW_V2_VOLT_DIV_R2)) << VOLT_FP_BITS) / (VOLT_ADC_RES * HW_V2_VOLT_DIV_R2))
+
+/* Hardware version 0 and 1 don't have a voltage divider so the calculation is simpler */
+#define HW_V0_UNIT_MV ((VOLT_ADC_REF << VOLT_FP_BITS) / VOLT_ADC_RES) /* Voltage [mV] per unit of ADC value */
+
+/*
+ * Ensure the fixed point calculation does not overflow by checking a maximum theoretical values, this is a compile time check
+ * This is safe up to 16V at 18 fixed point bits, we're not going to be debugging anything at that voltage lol
+ */
+#define VOLT_THEORETICAL_MAX 5500U /* Maximum theoretical voltage [mV] */
+#define UNIT_MV_MAX          ((VOLT_THEORETICAL_MAX << VOLT_FP_BITS) / VOLT_ADC_RES)
+#if (UNIT_MV_MAX * (VOLT_ADC_RES - 1U)) > UINT32_MAX
+#error "Voltage calculation overflows 32-bit integer"
+#endif
+
 uint32_t platform_target_voltage_sense(void)
 {
 	/*
@@ -391,34 +454,46 @@ uint32_t platform_target_voltage_sense(void)
 	 * This function is only needed for implementations that allow the
 	 * target to be powered from the debug probe
 	 */
-	if (hwversion == 0)
-		return 0;
+
+	/* hardware version 0 and 1 have tpwr connected directly to ADC_IN8 withouth a voltage divider */
+	const uint32_t tpwr_unit_mv_fp = hwversion <= 1U ? HW_V0_UNIT_MV : HW_V2_UNIT_MV;
 
 	uint8_t channel = 8;
 	adc_set_regular_sequence(ADC1, 1, &channel);
-
 	adc_start_conversion_direct(ADC1);
 
 	/* Wait for end of conversion. */
 	while (!adc_eoc(ADC1))
 		continue;
 
-	uint32_t val = adc_read_regular(ADC1); /* 0-4095 */
+	/* Convert the ADC value to a voltage in mV, the result will be in fixed point format, shimmy the result a bit */
+	const uint32_t tpwr_mv_fp =
+		((uint32_t)adc_read_regular(ADC1) * tpwr_unit_mv_fp) + (tpwr_unit_mv_fp / 2U); /* ADC value: 0-4095 */
+
 	/* Clear EOC bit. The GD32F103 does not automatically reset it on ADC read. */
 	ADC_SR(ADC1) &= ~ADC_SR_EOC;
-	return (val * 99U) / 8191U;
+
+	/* Convert to mV discarding the fractional part and rounding to the nearest integer */
+	return VOLT_FP_TO_UINT32(tpwr_mv_fp);
 }
 
 const char *platform_target_voltage(void)
 {
-	if (hwversion == 0)
-		return gpio_get(GPIOB, GPIO0) ? "Present" : "Absent";
+	const uint32_t milivolts = platform_target_voltage_sense();
 
-	static char ret[] = "0.0V";
-	uint32_t val = platform_target_voltage_sense();
-	ret[0] = '0' + val / 10U;
-	ret[2] = '0' + val % 10U;
+	static char ret[8U]; /* Enough for "12.345V" */
+	snprintf(ret, sizeof(ret), "%lu.%03luV", milivolts / 1000U, milivolts % 1000U);
 
+	// This is cute but breaks compatibility with remote protocol
+	// if(tpwr_volt > 0)
+	// {
+	// 	if (tpwr_mv > 0)
+	// 		snprintf(ret, sizeof(ret), "%lu.%03luV", tpwr_volt, tpwr_mv);
+	// 	else
+	// 		snprintf(ret, sizeof(ret), "%luV", tpwr_volt);
+	// }
+	// else
+	// 	snprintf(ret, sizeof(ret), "%lumV", tpwr_mv);
 	return ret;
 }
 

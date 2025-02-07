@@ -583,10 +583,10 @@ uint32_t platform_target_voltage_sense(void)
 	case PROBE_TYPE_BMP: {
 		const char *const result = remote_target_voltage();
 		if (result != NULL) {
-			uint32_t units = 0;
-			uint32_t tenths = 0;
-			sscanf(result, "%" PRIu32 ".%" PRIu32, &units, &tenths);
-			target_voltage = (units * 10U) + tenths;
+			uint32_t tpwr_volt = 0;
+			uint32_t tpwr_mv = 0;
+			sscanf(result, "%" PRIu32 ".%" PRIu32, &tpwr_volt, &tpwr_mv);
+			target_voltage = (tpwr_volt * 1000U) + (tpwr_mv * 100U);
 		}
 		break;
 	}
