@@ -144,13 +144,21 @@ riscv_jtag_dtm = declare_dependency(
 	),
 )
 
+if rvswd_support
+riscv_rvswd_dtm = declare_dependency(
+	sources: files('rvswd_dtm.c'),
+)
+else
+riscv_rvswd_dtm = disabler()
+endif
+
 target_riscv = declare_dependency(
 	sources: files(
 		'riscv_debug.c',
 		'riscv_adi_dtm.c',
 	),
 	compile_args: ['-DCONFIG_RISCV=1'],
-	dependencies: riscv_jtag_dtm,
+	dependencies: [riscv_jtag_dtm, riscv_rvswd_dtm],
 )
 
 target_riscv32 = declare_dependency(
