@@ -87,6 +87,8 @@ static bool rvswd_transfer_dmi_long(const uint8_t operation, const uint32_t addr
 	const uint8_t host_parity =
 		calculate_odd_parity(address & 0x7fU) ^ calculate_odd_parity(value) ^ calculate_odd_parity(operation & 0x3U);
 
+	platform_critical_enter();
+
 	/* Start condition */
 	rvswd_proc.start();
 
@@ -116,6 +118,8 @@ static bool rvswd_transfer_dmi_long(const uint8_t operation, const uint32_t addr
 
 	/* Stop condition */
 	rvswd_proc.stop();
+
+	platform_critical_exit();
 
 	/* Check parity */
 	const uint8_t calculated_target_parity = calculate_odd_parity(target_address & 0x7fU) ^
@@ -189,6 +193,8 @@ static bool rvswd_transfer_dmi_short(
 	const uint8_t host_parity = rvswd_calculate_parity_short(((address & 0x7fU) << 1U) | (uint32_t)write);
 	uint32_t data_parity = write ? rvswd_calculate_parity_short(value) : 0U;
 
+	platform_critical_enter();
+
 	/* Start condition */
 	rvswd_proc.start();
 
@@ -223,6 +229,8 @@ static bool rvswd_transfer_dmi_short(
 
 	/* Stop condition */
 	rvswd_proc.stop();
+
+	platform_critical_exit();
 
 	/* Check parity */
 	if (!write) {
