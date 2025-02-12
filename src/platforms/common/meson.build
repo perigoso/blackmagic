@@ -40,6 +40,10 @@ platform_common_sources = files(
 	'syscalls.c',
 )
 
+if rvswd_support
+	platform_common_sources += files('rvswd.c')
+endif
+
 platform_common = declare_dependency(
 	include_directories: platform_common_includes,
 	sources: platform_common_sources,

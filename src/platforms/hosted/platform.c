@@ -41,6 +41,10 @@
 #include "gdb_packet.h"
 #include <signal.h>
 
+#if defined(CONFIG_RVSWD) && defined(PLATFORM_HAS_RVSWD)
+#include "rvswd.h"
+#endif
+
 #ifdef ENABLE_RTT
 #include "rtt_if.h"
 #endif
@@ -64,6 +68,9 @@ bmda_probe_s bmda_probe_info;
 #ifndef ENABLE_GPIOD
 jtag_proc_s jtag_proc;
 swd_proc_s swd_proc;
+#if defined(CONFIG_RVSWD) && defined(PLATFORM_HAS_RVSWD)
+rvswd_proc_s rvswd_proc;
+#endif
 #endif
 
 static uint32_t max_frequency = 4000000U;
