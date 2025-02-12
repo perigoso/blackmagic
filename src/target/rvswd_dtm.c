@@ -40,6 +40,10 @@
 #include "maths_utils.h"
 #include "jep106.h"
 
+// #define ENABLE_LONG_PACKET_PROBE 1
+
+#define WCH_DTM_IDCODE 0x7fU /* Custom WCH DM register which mirrors the target IDCODE register */
+
 static void rvswd_wakeup_sequence(const bool stop_condition)
 {
 	/*
@@ -291,4 +295,70 @@ static void riscv_rvswd_dtm_handler(const bool short_packets)
 	/* If we failed to find any DMs or Harts, free the structure */
 	if (!dmi->ref_count)
 		free(dmi);
+}
+
+bool rvswd_scan(void)
+{
+	/* Free the device list if any, and clean state ready */
+	target_list_free();
+
+#if CONFIG_BMDA == 0
+	rvswd_init();
+#endif
+
+	platform_target_clk_output_enable(true);
+
+	/* Run the wakeup sequence */
+	rvswd_wakeup_sequence(true);
+
+#ifdef ENABLE_LONG_PACKET_PROBE
+	/* Look for a DTM with long packets */
+	DEBUG_INFO("Scanning for RISC-V DTM with RVSWD long packets\n");
+	/* WCH-Link attempts 202 times, we can probably do less */
+	for (size_t i = 0; i < 202U; i++) {
+		/* Read the DTM status register */
+		uint8_t status = 0U;
+		uint32_t value = 0U;
+		if (!rvswd_transfer_dmi_long(RV_DMI_READ, RV_DM_STATUS, 0, &value, &status) || status != RV_DMI_SUCCESS)
+			continue;
+
+		/* A successful read of the status register means we found a DTM, probably? */
+		if (value != 0U && value != 0xffffffffU) {
+			/* Delegate to the RISC-V DTM handler */
+			riscv_rvswd_dtm_handler(false);
+			return true;
+		}
+	}
+#endif
+
+	/* Run the short packet wakeup sequence */
+	rvswd_wakeup_sequence(false);
+
+	/* Look for a DTM with short packets */
+	DEBUG_INFO("Scanning for RISC-V DTM with RVSWD short packets\n");
+	for (size_t i = 0; i < 10U; i++) {
+		/* Enable the DM */
+		/* TODO: verify the spec, is the STATUS register available in all states? if so use it */
+		uint8_t status = 0U;
+		if (!rvswd_transfer_dmi_short(true, RV_DM_CONTROL, RV_DM_CTRL_HALT_REQ | RV_DM_CTRL_ACTIVE, NULL, &status) ||
+			status != RV_DMI_SUCCESS)
+			continue;
+
+		/* Read the WCH IDCODE register */
+		uint32_t idcode = 0U;
+		if (!rvswd_transfer_dmi_short(false, WCH_DTM_IDCODE, 0U, &idcode, &status) || status != RV_DMI_SUCCESS)
+			continue;
+
+		/* A successful read of the IDCODE register means we found a DTM, probably */
+		if (idcode != 0U && idcode != 0xffffffffU) {
+			/* Put the DM back into reset so it's in a known good state */
+			(void)rvswd_transfer_dmi_short(true, RV_DM_CONTROL, 0U, NULL, &status);
+
+			/* Delegate to the RISC-V DTM handler */
+			riscv_rvswd_dtm_handler(true);
+			return true;
+		}
+	}
+
+	return false;
 }
