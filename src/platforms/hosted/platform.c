@@ -203,6 +203,16 @@ void platform_init(int argc, char **argv)
 	}
 }
 
+void platform_critical_enter(void)
+{
+	/* Nothing to do */
+}
+
+void platform_critical_exit(void)
+{
+	/* Nothing to do */
+}
+
 bool bmda_swd_scan(void)
 {
 	return bmda_swd_scan_targetid(0);
