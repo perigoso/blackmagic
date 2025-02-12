@@ -50,29 +50,6 @@
  * https://github.com/riscv/riscv-debug-spec/blob/master/riscv-debug-stable.pdf
  */
 
-#define RV_DM_CONTROL      0x10U
-#define RV_DM_STATUS       0x11U
-#define RV_DM_NEXT_DM      0x1dU
-#define RV_DM_PROGBUF_BASE 0x20U
-
-#define RV_DM_CTRL_ACTIVE          (1U << 0U)
-#define RV_DM_CTRL_SYSTEM_RESET    (1U << 1U)
-#define RV_DM_CTRL_HARTSEL_MASK    0x03ffffc0U
-#define RV_DM_CTRL_HARTSELLO_MASK  0x03ff0000U
-#define RV_DM_CTRL_HARTSELHI_MASK  0x0000ffc0U
-#define RV_DM_CTRL_HART_ACK_RESET  (1U << 28U)
-#define RV_DM_CTRL_HART_RESET      (1U << 29U)
-#define RV_DM_CTRL_RESUME_REQ      (1U << 30U)
-#define RV_DM_CTRL_HALT_REQ        (1U << 31U)
-#define RV_DM_CTRL_HARTSELLO_SHIFT 16U
-#define RV_DM_CTRL_HARTSELHI_SHIFT 4U
-
-#define RV_DM_STAT_ALL_HALTED     (1U << 9U)
-#define RV_DM_STAT_UNAVAILABLE    (1U << 12U)
-#define RV_DM_STAT_NON_EXISTENT   (1U << 14U)
-#define RV_DM_STAT_ALL_RESUME_ACK (1U << 17U)
-#define RV_DM_STAT_ALL_RESET      (1U << 19U)
-
 #define RV_DM_ABST_STATUS_BUSY              (1U << 12U)
 #define RV_DM_ABST_STATUS_DATA_COUNT        0x0000000fU
 #define RV_DM_ABST_STATUS_PROGBUFSIZE_MASK  0x1f000000U

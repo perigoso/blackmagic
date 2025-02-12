@@ -174,20 +174,87 @@ typedef struct riscv_hart {
 #define RV_DMI_FAILURE  2U /* A previous operation failed */
 #define RV_DMI_TOO_SOON 3U /* An operation was attempted while a DMI request is still in progress */
 
-#define RV_DM_DATA0             0x04U
-#define RV_DM_DATA1             0x05U
-#define RV_DM_DATA2             0x06U
-#define RV_DM_DATA3             0x07U
-#define RV_DM_ABST_CTRLSTATUS   0x16U
-#define RV_DM_ABST_COMMAND      0x17U
-#define RV_DM_SYSBUS_CTRLSTATUS 0x38U
-#define RV_DM_SYSBUS_ADDR0      0x39U
-#define RV_DM_SYSBUS_ADDR1      0x3aU
-#define RV_DM_SYSBUS_DATA0      0x3cU
-#define RV_DM_SYSBUS_DATA1      0x3dU
+/* Debug Module Registers (spec version 0.13.2) */
+#define RV_DM_DATA_BASE         0x04U                      /* Abstract Data 0 */
+#define RV_DM_DATA(n)           (RV_DM_DATA_BASE + (n))    /* Abstract Data n (0 - 11) */
+#define RV_DM_DATA0             RV_DM_DATA(0U)             /* Abstract Data 0 */
+#define RV_DM_DATA1             RV_DM_DATA(1U)             /* Abstract Data 1 */
+#define RV_DM_DATA2             RV_DM_DATA(2U)             /* Abstract Data 2 */
+#define RV_DM_DATA3             RV_DM_DATA(3U)             /* Abstract Data 3 */
+#define RV_DM_DATA4             RV_DM_DATA(4U)             /* Abstract Data 4 */
+#define RV_DM_DATA5             RV_DM_DATA(5U)             /* Abstract Data 5 */
+#define RV_DM_DATA6             RV_DM_DATA(6U)             /* Abstract Data 6 */
+#define RV_DM_DATA7             RV_DM_DATA(7U)             /* Abstract Data 7 */
+#define RV_DM_DATA8             RV_DM_DATA(8U)             /* Abstract Data 8 */
+#define RV_DM_DATA9             RV_DM_DATA(9U)             /* Abstract Data 9 */
+#define RV_DM_DATA10            RV_DM_DATA(10U)            /* Abstract Data 10 */
+#define RV_DM_DATA11            RV_DM_DATA(11U)            /* Abstract Data 11 */
+#define RV_DM_CONTROL           0x10U                      /* Debug Module Control */
+#define RV_DM_STATUS            0x11U                      /* Debug Module Status */
+#define RV_DM_HART_INFO         0x12U                      /* Hart Info */
+#define RV_DM_HALT_SUM1         0x13U                      /* Halt Summary 1 */
+#define RV_DM_HAWINDOW_SEL      0x14U                      /* Hart Array Window Select */
+#define RV_DM_HAWINDOW          0x15U                      /* Hart Array Window */
+#define RV_DM_ABST_CTRLSTATUS   0x16U                      /* Abstract Control and Status */
+#define RV_DM_ABST_COMMAND      0x17U                      /* Abstract Command */
+#define RV_DM_ABST_AUTO         0x18U                      /* Abstract Command Autoexec */
+#define RV_DM_CONFSTRPTR0       0x19U                      /* Configuration String Pointer 0 */
+#define RV_DM_CONFSTRPTR1       0x1aU                      /* Configuration String Pointer 1 */
+#define RV_DM_CONFSTRPTR2       0x1bU                      /* Configuration String Pointer 2 */
+#define RV_DM_CONFSTRPTR3       0x1cU                      /* Configuration String Pointer 3 */
+#define RV_DM_NEXT_DM           0x1dU                      /* Next Debug Module */
+#define RV_DM_PROGBUF_BASE      0x20U                      /* Program Buffer 0 */
+#define RV_DM_PROGBUF(n)        (RV_DM_PROGBUF_BASE + (n)) /* Program Buffer n (0 - 15) */
+#define RV_DM_PROGBUF0          RV_DM_PROGBUF(0U)          /* Program Buffer 0 */
+#define RV_DM_PROGBUF1          RV_DM_PROGBUF(1U)          /* Program Buffer 1 */
+#define RV_DM_PROGBUF2          RV_DM_PROGBUF(2U)          /* Program Buffer 2 */
+#define RV_DM_PROGBUF3          RV_DM_PROGBUF(3U)          /* Program Buffer 3 */
+#define RV_DM_PROGBUF4          RV_DM_PROGBUF(4U)          /* Program Buffer 4 */
+#define RV_DM_PROGBUF5          RV_DM_PROGBUF(5U)          /* Program Buffer 5 */
+#define RV_DM_PROGBUF6          RV_DM_PROGBUF(6U)          /* Program Buffer 6 */
+#define RV_DM_PROGBUF7          RV_DM_PROGBUF(7U)          /* Program Buffer 7 */
+#define RV_DM_PROGBUF8          RV_DM_PROGBUF(8U)          /* Program Buffer 8 */
+#define RV_DM_PROGBUF9          RV_DM_PROGBUF(9U)          /* Program Buffer 9 */
+#define RV_DM_PROGBUF10         RV_DM_PROGBUF(10U)         /* Program Buffer 10 */
+#define RV_DM_PROGBUF11         RV_DM_PROGBUF(11U)         /* Program Buffer 11 */
+#define RV_DM_PROGBUF12         RV_DM_PROGBUF(12U)         /* Program Buffer 12 */
+#define RV_DM_PROGBUF13         RV_DM_PROGBUF(13U)         /* Program Buffer 13 */
+#define RV_DM_PROGBUF14         RV_DM_PROGBUF(14U)         /* Program Buffer 14 */
+#define RV_DM_PROGBUF15         RV_DM_PROGBUF(15U)         /* Program Buffer 15 */
+#define RV_DM_AUTHDATA          0x30U                      /* Authentication Data */
+#define RV_DM_HALT_SUM2         0x34U                      /* Halt Summary 2 */
+#define RV_DM_HALT_SUM3         0x35U                      /* Halt Summary 3 */
+#define RV_DM_SYSBUS_ADDR3      0x37U                      /* System Bus Address 127:96 */
+#define RV_DM_SYSBUS_CTRLSTATUS 0x38U                      /* System Bus Access Control and Status */
+#define RV_DM_SYSBUS_ADDR0      0x39U                      /* System Bus Address 31:0 */
+#define RV_DM_SYSBUS_ADDR1      0x3aU                      /* System Bus Address 63:32 */
+#define RV_DM_SYSBUS_ADDR2      0x3bU                      /* System Bus Address 95:64 */
+#define RV_DM_SYSBUS_DATA0      0x3cU                      /* System Bus Data 31:0 */
+#define RV_DM_SYSBUS_DATA1      0x3dU                      /* System Bus Data 63:32 */
+#define RV_DM_SYSBUS_DATA2      0x3eU                      /* System Bus Data 95:64 */
+#define RV_DM_SYSBUS_DATA3      0x3fU                      /* System Bus Data 127:96 */
+#define RV_DM_HALT_SUM0         0x40U                      /* Halt Summary 0 */
 
 #define RV_DM_ABST_CMD_ACCESS_REG 0x00000000U
 #define RV_DM_ABST_CMD_ACCESS_MEM 0x02000000U
+
+#define RV_DM_CTRL_ACTIVE          (1U << 0U)
+#define RV_DM_CTRL_SYSTEM_RESET    (1U << 1U)
+#define RV_DM_CTRL_HARTSEL_MASK    0x03ffffc0U
+#define RV_DM_CTRL_HARTSELLO_MASK  0x03ff0000U
+#define RV_DM_CTRL_HARTSELHI_MASK  0x0000ffc0U
+#define RV_DM_CTRL_HART_ACK_RESET  (1U << 28U)
+#define RV_DM_CTRL_HART_RESET      (1U << 29U)
+#define RV_DM_CTRL_RESUME_REQ      (1U << 30U)
+#define RV_DM_CTRL_HALT_REQ        (1U << 31U)
+#define RV_DM_CTRL_HARTSELLO_SHIFT 16U
+#define RV_DM_CTRL_HARTSELHI_SHIFT 4U
+
+#define RV_DM_STAT_ALL_HALTED     (1U << 9U)
+#define RV_DM_STAT_UNAVAILABLE    (1U << 12U)
+#define RV_DM_STAT_NON_EXISTENT   (1U << 14U)
+#define RV_DM_STAT_ALL_RESUME_ACK (1U << 17U)
+#define RV_DM_STAT_ALL_RESET      (1U << 19U)
 
 #define RV_ABST_READ          (0U << 16U)
 #define RV_ABST_WRITE         (1U << 16U)
